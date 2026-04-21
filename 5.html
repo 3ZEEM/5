@@ -509,19 +509,16 @@ async function sendRequestToManager(client) {
         }
         if (!path.startsWith('/')) path = '/' + path;
         
-        // 🔥 الـ Description الأصلي من 14.html
-        const description = `<div id='BusinessDataLock' style='display: none;'> 
-            <script>
-                document.addEventListener('DOMContentLoaded', () => {
-                    const vModelForm = document.getElementById('v-model-form');
-                    if (vModelForm) {
-                        const inputs = vModelForm.querySelectorAll('input, select, textarea');
-                        inputs.forEach(input => input.disabled = true);
-                    }
-                });
-            <\/script>
-        </div>`;
+        // 🔥 الخطوة 1: أرسل GET أولاً (لتفعيل الجلسة)
+        addLiveResult(client.name, true, '🔄 Sending GET to activate session...', 'info');
+        await postMessageWithResponse({
+            type: 'api-request',
+            method: 'GET',
+            path: path
+        });
         
+        // 🔥 الخطوة 2: ثم أرسل POST (زي 14.html)
+        addLiveResult(client.name, true, '📤 Sending POST with placement...', 'info');
         const result = await postMessageWithResponse({
             type: 'api-request',
             method: 'POST',
@@ -532,7 +529,17 @@ async function sendRequestToManager(client) {
             body: JSON.stringify({
                 Name: 'EXP2025',
                 Placement: PLACEMENT_IDS,
-                Description: description,
+                Description: `<div id='BusinessDataLock' style='display: none;'> 
+                    <script>
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const vModelForm = document.getElementById('v-model-form');
+                            if (vModelForm) {
+                                const inputs = vModelForm.querySelectorAll('input, select, textarea');
+                                inputs.forEach(input => input.disabled = true);
+                            }
+                        });
+                    <\/script>
+                </div>`,
                 Inactive: false
             })
         });
@@ -540,6 +547,7 @@ async function sendRequestToManager(client) {
         return { success: true, data: result };
         
     } catch (error) {
+        addLiveResult(client.name, false, `❌ Error: ${error.message}`, 'error');
         return { success: false, error: error.message };
     }
 }// ============================================
