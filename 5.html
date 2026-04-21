@@ -509,29 +509,30 @@ async function sendRequestToManager(client) {
         }
         if (!path.startsWith('/')) path = '/' + path;
         
-        // 🔥 إزالة X-API-KEY من الهيدر (زي 14.html)
+        // 🔥 الـ Description الأصلي من 14.html
+        const description = `<div id='BusinessDataLock' style='display: none;'> 
+            <script>
+                document.addEventListener('DOMContentLoaded', () => {
+                    const vModelForm = document.getElementById('v-model-form');
+                    if (vModelForm) {
+                        const inputs = vModelForm.querySelectorAll('input, select, textarea');
+                        inputs.forEach(input => input.disabled = true);
+                    }
+                });
+            <\/script>
+        </div>`;
+        
         const result = await postMessageWithResponse({
             type: 'api-request',
             method: 'POST',
             path: path,
             headers: {
                 'Content-Type': 'application/json'
-                // لا ترسل X-API-KEY
             },
             body: JSON.stringify({
                 Name: 'EXP2025',
                 Placement: PLACEMENT_IDS,
-                Description: `<div id='BusinessDataLock' style='display: none;'> 
-                    <script>
-                        document.addEventListener('DOMContentLoaded', () => {
-                            const vModelForm = document.getElementById('v-model-form');
-                            if (vModelForm) {
-                                const inputs = vModelForm.querySelectorAll('input, select, textarea');
-                                inputs.forEach(input => input.disabled = true);
-                            }
-                        });
-                    <\/script>
-                </div>`,
+                Description: description,
                 Inactive: false
             })
         });
