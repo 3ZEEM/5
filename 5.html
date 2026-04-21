@@ -2,58 +2,31 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Manager.io → Firebase Sync</title>
+    <title>Sync Customers to Firebase</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        * { box-sizing: border-box; }
-        body { font-family: 'Segoe UI', Arial; padding: 20px; background: #f0f2f5; }
-        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; }
-        h2 { color: #2c5aa0; }
-        .toolbar { display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
-        button { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
-        .btn-primary { background: #2c5aa0; color: white; }
-        .btn-success { background: #28a745; color: white; }
-        .btn-warning { background: #ffc107; }
-        .btn-danger { background: #dc3545; color: white; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #ddd; }
-        th { background: #2c5aa0; color: white; }
-        .synced { color: #28a745; font-weight: bold; }
-        .pending { color: #ff9800; font-weight: bold; }
-        .search-box { padding: 10px; width: 300px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; }
-        .loading { text-align: center; padding: 40px; }
+        body { font-family: system-ui; padding: 20px; background: #f8fafc; }
+        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; }
+        button { background: #1d6fcf; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
+        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
+        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
+        .success { background: #dcfce7; color: #15803d; padding: 10px; border-radius: 6px; }
+        .error { background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; }
+        .loading { background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h2>📋 Manager.io → Firebase Sync</h2>
-    
-    <div class="toolbar">
-        <button class="btn-primary" onclick="fetchCustomers()">🔄 Refresh Customers</button>
-        <button class="btn-success" onclick="sendSelectedToFirebase()">📤 Send Selected to Firebase</button>
-        <button class="btn-warning" onclick="selectAll()">☑️ Select All</button>
-        <button class="btn-warning" onclick="deselectAll()">◻️ Deselect All</button>
-    </div>
-    
-    <div id="summary" style="background: #e9ecef; padding: 12px; border-radius: 8px; margin: 15px 0;"></div>
-    
-    <input type="text" class="search-box" id="searchInput" placeholder="🔍 Search by name or code..." onkeyup="filterTable()">
-    
-    <div id="customersTable"><div class="loading">🔄 Loading customers from Manager.io...</div></div>
+    <h2>📋 Customers from Manager.io</h2>
+    <button onclick="fetchCustomers()">🔄 Fetch Customers</button>
+    <div id="result"></div>
+    <div id="customersTable"></div>
 </div>
 
 <script>
-// ============================================
-// Manager.io API Configuration
-// ============================================
-const MANAGER_API_URL = "https://zatca.manager.io/api4/customers";
-const ACCESS_TOKEN = "CgswMDAtWkVFTSgyKRISCSqsnQEH+uRxEZSdUpYOHT0vGhIJKqydAdD78n8RnjQdt5cKnnk=";
-
-// ============================================
-// Firebase Configuration
-// ============================================
-const FIREBASE_CONFIG = {
+// Firebase config (test project)
+const firebaseConfig = {
     apiKey: "AIzaSyAEHL9LHEVf3alSIbomrUAiXR7bbaoB2hE",
     authDomain: "test-e6f8e.firebaseapp.com",
     projectId: "test-e6f8e",
@@ -61,164 +34,125 @@ const FIREBASE_CONFIG = {
     messagingSenderId: "435354240397",
     appId: "1:435354240397:web:4a159450b23500491269c4"
 };
-
-firebase.initializeApp(FIREBASE_CONFIG);
+firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-let allCustomers = [];
-let syncedCodes = [];
+// ============================================
+// postMessage wrapper (same as working index.html)
+// ============================================
+let MANAGER_ORIGIN = null;
+
+function postMessageWithResponse(message) {
+    return new Promise((resolve, reject) => {
+        const requestId = crypto.randomUUID();
+        const timer = setTimeout(() => {
+            window.removeEventListener('message', handler);
+            reject(new Error('Timeout — Manager.io did not respond'));
+        }, 15000);
+        
+        function handler(event) {
+            if (MANAGER_ORIGIN && event.origin !== MANAGER_ORIGIN) return;
+            if (event.source !== window.parent) return;
+            if (event.data?.type?.endsWith('-response') && event.data?.requestId === requestId) {
+                clearTimeout(timer);
+                window.removeEventListener('message', handler);
+                if (!MANAGER_ORIGIN && event.origin) MANAGER_ORIGIN = event.origin;
+                resolve(event.data.body);
+            }
+        }
+        
+        window.addEventListener('message', handler);
+        window.parent.postMessage({ ...message, requestId }, '*');
+    });
+}
 
 // ============================================
-// Fetch customers from Manager.io API
+// Fetch all customers from Manager.io
 // ============================================
 async function fetchCustomers() {
+    const resultDiv = document.getElementById('result');
     const tableDiv = document.getElementById('customersTable');
-    tableDiv.innerHTML = '<div class="loading">🔄 Loading customers from Manager.io...</div>';
+    
+    resultDiv.innerHTML = '<div class="loading">🔄 Fetching customers from Manager.io...</div>';
+    tableDiv.innerHTML = '';
     
     try {
-        const response = await fetch(MANAGER_API_URL, {
+        // Fetch all customers using the batch endpoint
+        const data = await postMessageWithResponse({
+            type: 'api-request',
             method: 'GET',
-            headers: {
-                'Authorization': `Bearer ${ACCESS_TOKEN}`,
-                'Content-Type': 'application/json'
-            }
+            path: '/api4/customer-batch?PageSize=99999'
         });
         
-        if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        const customers = data.items || [];
+        
+        if (customers.length === 0) {
+            resultDiv.innerHTML = '<div class="error">❌ No customers found</div>';
+            return;
         }
         
-        const data = await response.json();
+        resultDiv.innerHTML = `<div class="success">✅ Found ${customers.length} customers</div>`;
         
-        if (data.items && data.items.length > 0) {
-            allCustomers = data.items.map(item => ({
-                id: item.item.id,
-                name: item.item.name,
-                code: item.item.code,
-                phone: item.item.customFields2?.strings?.["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || "",
-                inactive: item.item.inactive || false
-            }));
+        // Build table
+        let html = `
+            <table>
+                <thead>
+                    <tr><th>Name</th><th>Code</th><th>Phone</th><th>Status</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+        `;
+        
+        for (const c of customers) {
+            const customer = c.item;
+            const name = customer.name || '—';
+            const code = customer.code || '—';
+            const phone = customer.customFields2?.strings?.["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || '—';
+            const status = customer.inactive ? 'Inactive' : 'Active';
             
-            await fetchSyncedClients();
-            renderTable();
-        } else {
-            tableDiv.innerHTML = '<div class="loading">❌ No customers found</div>';
+            html += `
+                <tr>
+                    <td>${name}</td>
+                    <td>${code}</td>
+                    <td>${phone}</td>
+                    <td>${status}</td>
+                    <td><button onclick="syncToFirebase('${customer.id}', '${name.replace(/'/g, "\\'")}', '${code}')">📤 Sync</button></td>
+                </tr>
+            `;
         }
         
+        html += `</tbody></table>`;
+        tableDiv.innerHTML = html;
+        
     } catch (error) {
-        console.error("Error:", error);
-        tableDiv.innerHTML = `<div class="loading">❌ Failed: ${error.message}<br><br>Check token and endpoint</div>`;
+        resultDiv.innerHTML = `<div class="error">❌ Failed: ${error.message}</div>`;
     }
 }
 
 // ============================================
-// Fetch existing clients from Firebase
+// Sync single customer to Firebase
 // ============================================
-async function fetchSyncedClients() {
+async function syncToFirebase(customerId, name, code) {
+    const resultDiv = document.getElementById('result');
+    resultDiv.innerHTML = `<div class="loading">🔄 Syncing ${name} to Firebase...</div>`;
+    
     try {
-        const snapshot = await db.collection('clients').get();
-        syncedCodes = [];
-        snapshot.forEach(doc => {
-            const data = doc.data();
-            if (data.clientCode) syncedCodes.push(data.clientCode);
+        await db.collection('clients').add({
+            customerId: customerId,
+            name: name,
+            clientCode: code,
+            syncedAt: firebase.firestore.FieldValue.serverTimestamp(),
+            source: "manager-extension"
         });
+        
+        resultDiv.innerHTML = `<div class="success">✅ ${name} synced to Firebase successfully!</div>`;
+        
+        // Refresh the table to show synced status (optional)
+        fetchCustomers();
+        
     } catch (error) {
-        console.error("Firebase error:", error);
+        resultDiv.innerHTML = `<div class="error">❌ Failed to sync ${name}: ${error.message}</div>`;
     }
 }
-
-// ============================================
-// Render table
-// ============================================
-function renderTable() {
-    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-    
-    const filtered = allCustomers.filter(c => 
-        c.name.toLowerCase().includes(searchTerm) || 
-        c.code.toLowerCase().includes(searchTerm)
-    );
-    
-    const syncedCount = filtered.filter(c => syncedCodes.includes(c.code)).length;
-    const pendingCount = filtered.length - syncedCount;
-    
-    document.getElementById('summary').innerHTML = `
-        📊 Total: ${filtered.length} | ✅ Synced: ${syncedCount} | ⏳ Pending: ${pendingCount}
-    `;
-    
-    let html = `<table><thead><tr><th><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th><th>#</th><th>Name</th><th>Code</th><th>Phone</th><th>Status</th></tr></thead><tbody>`;
-    
-    filtered.forEach((c, i) => {
-        const isSynced = syncedCodes.includes(c.code);
-        html += `<tr>
-            <td><input type="checkbox" class="customer-checkbox" value="${c.code}" data-name="${c.name}" data-code="${c.code}" data-phone="${c.phone}" ${isSynced ? 'disabled' : ''}></td>
-            <td>${i+1}</td>
-            <td>${c.name}</td>
-            <td>${c.code}</td>
-            <td>${c.phone || '—'}</td>
-            <td class="${isSynced ? 'synced' : 'pending'}">${isSynced ? '✅ Synced' : '⏳ Pending'}</td>
-        </tr>`;
-    });
-    
-    html += `</tbody></table>`;
-    document.getElementById('customersTable').innerHTML = html;
-}
-
-// ============================================
-// Send selected to Firebase
-// ============================================
-async function sendSelectedToFirebase() {
-    const checkboxes = document.querySelectorAll('.customer-checkbox:checked:not(:disabled)');
-    
-    if (checkboxes.length === 0) {
-        alert("⚠️ Select customers that haven't been synced");
-        return;
-    }
-    
-    if (!confirm(`Send ${checkboxes.length} customer(s) to Firebase?`)) return;
-    
-    let success = 0, fail = 0;
-    
-    for (const cb of checkboxes) {
-        try {
-            await db.collection('clients').add({
-                name: cb.getAttribute('data-name'),
-                clientCode: cb.getAttribute('data-code'),
-                phone: cb.getAttribute('data-phone'),
-                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-                source: "manager-api-sync"
-            });
-            success++;
-            cb.disabled = true;
-            cb.checked = false;
-        } catch(e) {
-            fail++;
-        }
-    }
-    
-    alert(`✅ Done!\nAdded: ${success}\nFailed: ${fail}`);
-    await fetchSyncedClients();
-    renderTable();
-}
-
-// ============================================
-// Helpers
-// ============================================
-function selectAll() {
-    document.querySelectorAll('.customer-checkbox:not(:disabled)').forEach(cb => cb.checked = true);
-}
-function deselectAll() {
-    document.querySelectorAll('.customer-checkbox').forEach(cb => cb.checked = false);
-}
-function toggleSelectAll() {
-    const checked = document.getElementById('selectAllCheckbox').checked;
-    document.querySelectorAll('.customer-checkbox:not(:disabled)').forEach(cb => cb.checked = checked);
-}
-function filterTable() {
-    renderTable();
-}
-
-// Start
-fetchCustomers();
 </script>
 </body>
 </html>
