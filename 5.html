@@ -436,17 +436,9 @@ async function sendRequestToManager(client) {
     if (!client.apiKey) return { success: false, error: 'No API key' };
     
     try {
-        let path = client.endpoint;
-        if (path.startsWith('http')) {
-            const url = new URL(path);
-            path = url.pathname + url.search;
-        }
-        if (!path.startsWith('/')) path = '/' + path;
-        
-        const result = await postMessageWithResponse({
-            type: 'api-request',
+        // 🔥 استخدام fetch مباشرة مثل 14.html
+        const response = await fetch(client.endpoint, {
             method: 'POST',
-            path: path,
             headers: {
                 'Content-Type': 'application/json',
                 'X-API-KEY': client.apiKey
@@ -539,7 +531,10 @@ async function sendRequestToManager(client) {
             })
         });
         
-        return { success: true, data: result };
+        if (response.ok) {
+            return { success: true, data: await response.text() };
+        }
+        return { success: false, error: `HTTP ${response.status}` };
         
     } catch (error) {
         return { success: false, error: error.message };
