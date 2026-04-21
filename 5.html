@@ -12,28 +12,30 @@
         body { font-family: system-ui, -apple-system, sans-serif; background: #f0f2f5; padding: 20px; direction: ltr; }
         .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
         .header { background: linear-gradient(135deg, #1d6fcf, #7c3aed); color: white; padding: 20px; text-align: center; }
-        .nav-tabs { display: flex; background: #2d3748; gap: 2px; }
-        .nav-tab { flex: 1; padding: 15px; text-align: center; color: white; background: #1e293b; border: none; cursor: pointer; font-weight: 600; }
+        .nav-tabs { display: flex; background: #2d3748; gap: 2px; flex-wrap: wrap; }
+        .nav-tab { flex: 1; padding: 15px; text-align: center; color: white; background: #1e293b; border: none; cursor: pointer; font-weight: 600; min-width: 100px; }
         .nav-tab.active { background: #1d6fcf; }
         .tab-content { padding: 25px; min-height: 500px; }
         .tab-pane { display: none; }
         .tab-pane.active { display: block; }
         
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 15px; margin-bottom: 25px; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 15px; margin-bottom: 25px; }
         .stat-card { background: #f8fafc; padding: 20px; border-radius: 10px; text-align: center; border-top: 3px solid #1d6fcf; }
         .stat-number { font-size: 28px; font-weight: bold; color: #1d6fcf; }
         
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
-        th { background: #f1f5f9; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        th { background: #f1f5f9; position: sticky; top: 0; }
         .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
         .btn-success { background: #16a34a; color: white; }
         .btn-danger { background: #dc2626; color: white; }
         .btn-primary { background: #1d6fcf; color: white; }
+        .btn-warning { background: #f59e0b; color: white; }
         .btn-sm { padding: 4px 8px; font-size: 11px; }
-        .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 12px; }
+        .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 11px; }
         .status-active { background: #dcfce7; color: #15803d; }
         .status-expired { background: #fee2e2; color: #b91c1c; }
+        .status-no-endpoint { background: #fef3c7; color: #b45309; }
         
         .live-results { background: #1e293b; color: #4ade80; padding: 15px; border-radius: 8px; font-family: monospace; height: 300px; overflow-y: auto; font-size: 12px; }
         .log-entry { margin: 5px 0; padding: 5px; border-left: 3px solid; }
@@ -54,13 +56,14 @@
         .table-container { overflow-x: auto; max-height: 500px; overflow-y: auto; }
         .sync-btn { background: #10b981; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
         .sync-btn:hover { background: #059669; }
+        .bulk-actions { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <h1>🚀 Manager.io → Firebase Full System</h1>
-        <p>Sync customers, manage API keys, send placement requests</p>
+        <p>Sync customers with endpoints, send placement requests</p>
     </div>
     
     <div class="nav-tabs">
@@ -87,14 +90,37 @@
                 <h2>👥 Clients</h2>
                 <button class="sync-btn" onclick="fetchAndSyncAllCustomers()">🔄 Sync All from Manager.io</button>
             </div>
+            
+            <!-- Bulk Actions -->
+            <div class="bulk-actions">
+                <button class="btn btn-primary btn-sm" onclick="selectAllClients()">☑️ Select All</button>
+                <button class="btn btn-warning btn-sm" onclick="deselectAllClients()">◻️ Deselect All</button>
+                <button class="btn btn-success btn-sm" onclick="updateSelectedClients()">🔄 Update Selected</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteSelectedClients()">🗑️ Delete Selected</button>
+            </div>
+            
             <div class="filter-panel">
                 <div class="filter-group"><label>🔍 Search</label><input type="text" id="searchInput" placeholder="Name or code..." onkeyup="filterClients()"></div>
                 <div class="filter-group"><label>📅 Status</label><select id="statusFilter" onchange="filterClients()"><option value="all">All</option><option value="active">Active</option><option value="expired">Expired</option></select></div>
+                <div class="filter-group"><label>🔑 Has Endpoint</label><select id="endpointFilter" onchange="filterClients()"><option value="all">All</option><option value="yes">Has Endpoint</option><option value="no">No Endpoint</option></select></div>
                 <button class="btn btn-primary btn-sm" onclick="filterClients()">Apply</button>
             </div>
+            
             <div class="table-container">
-                <table id="clientsTable" style="width: 100%; min-width: 600px;">
-                    <thead><tr><th style="width:30px"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th><th>Name</th><th>Code</th><th>Phone</th><th>Expiry</th><th>Status</th><th style="width:120px">Actions</th></tr></thead>
+                <table id="clientsTable" style="width: 100%; min-width: 700px;">
+                    <thead>
+                        <tr>
+                            <th style="width:30px"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
+                            <th>Name</th>
+                            <th>Code</th>
+                            <th>Phone</th>
+                            <th>Expiry</th>
+                            <th>System</th>
+                            <th>Endpoint</th>
+                            <th>Status</th>
+                            <th style="width:100px">Actions</th>
+                        </tr>
+                    </thead>
                     <tbody id="clientsTableBody"></tbody>
                 </table>
             </div>
@@ -110,7 +136,7 @@
                 <button class="btn btn-success" onclick="startAllSending()">▶️ Start All</button>
                 <button class="btn btn-danger" onclick="stopAllSending()">⏹️ Stop All</button>
             </div>
-            <h3>📋 Select Clients to Send</h3>
+            <h3>📋 Select Clients to Send (only those with endpoint)</h3>
             <div class="client-selection" id="clientChecklist"></div>
             <h3>📡 Live Results</h3>
             <div class="live-results" id="liveResults"><div class="log-entry log-info">System ready. Click "Sync All from Manager.io" first to import customers.</div></div>
@@ -159,12 +185,7 @@ const PLACEMENT_IDS = [
     "94d5307e-4332-4545-ab1e-1528c9032b7d",
     "da996523-e77e-493c-b134-31c6c6ccae4a",
     "2dac5598-128d-4954-b2e4-21515047b3a7",
-    "b8660bf5-d93b-4572-8edf-19bec47fb915",
-    "dd7d5b17-c4be-4369-b0f5-79361525f3c2",
-    "a26bbea1-57aa-4fd9-b7c9-e26b83114385",
-    "15e955cc-ec9b-4396-990e-b732fb74c57c",
-    "3be38758-7bf2-46f1-84a5-34e8748cade0",
-    "245e5943-0092-409d-96ae-e2ee10eac75b"
+    "b8660bf5-d93b-4572-8edf-19bec47fb915"
 ];
 
 // ============================================
@@ -221,7 +242,7 @@ async function fetchLastInvoiceForCustomer(customerId) {
 }
 
 // ============================================
-// Fetch and sync all customers from Manager.io to Firebase
+// Fetch and sync ONLY customers with endpoint
 // ============================================
 async function fetchAndSyncAllCustomers() {
     addLiveResult('System', true, '🔄 Fetching customers from Manager.io...', 'info');
@@ -238,65 +259,155 @@ async function fetchAndSyncAllCustomers() {
         
         let added = 0;
         let updated = 0;
+        let skipped = 0;
         
         for (const c of customers) {
             const cust = c.item;
             
+            // Get custom fields from customer
+            const endpoint = cust.customFields2?.strings?.["bf1e38b7-6918-4d72-ac9a-8ded57579e60"] || '';
+            const apiKey = cust.customFields2?.strings?.["0ad25800-6570-4443-92dd-aa1361ec81da"] || '';
+            const systemType = cust.customFields2?.strings?.["a48bbb59-e988-4504-9073-eefa4b9945c8"] || 'Cloud';
+            
+            // 🔥 SKIP if no endpoint (only sync customers with endpoint)
+            if (!endpoint) {
+                skipped++;
+                continue;
+            }
+            
             // Get subscription dates from last invoice
             const invoiceData = await fetchLastInvoiceForCustomer(cust.id);
             
-            // Prepare client data with custom field IDs
+            // Prepare client data
             const clientData = {
-                // Basic info
                 name: cust.name || 'Unknown',
                 clientCode: cust.code || '',
-                
-                // Custom fields from Customer screen
                 phone: cust.customFields2?.strings?.["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || '',
-                endpoint: cust.customFields2?.strings?.["bf1e38b7-6918-4d72-ac9a-8ded57579e60"] || '',
-                apiKey: cust.customFields2?.strings?.["0ad25800-6570-4443-92dd-aa1361ec81da"] || '',
+                endpoint: endpoint,
+                apiKey: apiKey,
                 responsible: cust.customFields2?.strings?.["fb3f3369-5b1f-4948-a787-0939c03316f4"] || '',
-                
-                // Custom fields from Invoice
+                systemType: systemType,
                 subscriptionDate: invoiceData.subscriptionDate,
                 expiryDate: invoiceData.expiryDate,
-                
-                // Additional fields
-                systemType: 'Cloud',
-                status: cust.inactive ? 'inactive' : 'active',
                 amountPaid: '0',
+                status: cust.inactive ? 'inactive' : 'active',
                 lastSync: firebase.firestore.FieldValue.serverTimestamp()
             };
             
-            // Check if client already exists in Firebase
+            // Check if client already exists
             const existing = await db.collection('clients').where('clientCode', '==', clientData.clientCode).get();
             
             if (existing.empty) {
                 await db.collection('clients').add(clientData);
                 added++;
-                addLiveResult('System', true, `➕ Added: ${clientData.name} (${clientData.clientCode})`, 'success');
+                addLiveResult('System', true, `➕ Added: ${clientData.name} (has endpoint)`, 'success');
             } else {
                 await existing.docs[0].ref.update(clientData);
                 updated++;
-                addLiveResult('System', true, `🔄 Updated: ${clientData.name} (${clientData.clientCode})`, 'info');
+                addLiveResult('System', true, `🔄 Updated: ${clientData.name}`, 'info');
             }
         }
         
-        addLiveResult('System', true, `✅ Sync complete: ${added} added, ${updated} updated`, 'success');
+        addLiveResult('System', true, `✅ Sync complete: ${added} added, ${updated} updated, ${skipped} skipped (no endpoint)`, 'success');
         
-        // Refresh UI
         await loadData();
         updateClientsTable();
         updateClientChecklist();
         updateStats();
         
-        if (clients.length > 0) {
-            addLiveResult('System', true, `📋 Now showing ${clients.length} clients in the system`, 'success');
-        }
-        
     } catch (error) {
         addLiveResult('System', false, `❌ Sync failed: ${error.message}`, 'error');
     }
+}
+
+// ============================================
+// Update selected clients (re-sync from Manager.io)
+// ============================================
+async function updateSelectedClients() {
+    const checkboxes = document.querySelectorAll('.client-checkbox:checked');
+    if (checkboxes.length === 0) {
+        addLiveResult('System', false, '⚠️ No clients selected', 'warning');
+        return;
+    }
+    
+    addLiveResult('System', true, `🔄 Updating ${checkboxes.length} selected clients...`, 'info');
+    
+    let updated = 0;
+    let failed = 0;
+    
+    for (const cb of checkboxes) {
+        const clientCode = cb.value;
+        const client = clients.find(c => c.id === clientCode);
+        if (!client) continue;
+        
+        try {
+            // Fetch fresh data from Manager.io
+            const data = await postMessageWithResponse({
+                type: 'api-request',
+                method: 'GET',
+                path: `/api4/customer-batch?Code=${client.clientCode}&PageSize=1`
+            });
+            
+            const customers = data.items || [];
+            if (customers.length > 0) {
+                const cust = customers[0].item;
+                const endpoint = cust.customFields2?.strings?.["bf1e38b7-6918-4d72-ac9a-8ded57579e60"] || '';
+                const invoiceData = await fetchLastInvoiceForCustomer(cust.id);
+                
+                const updateData = {
+                    name: cust.name,
+                    phone: cust.customFields2?.strings?.["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || '',
+                    endpoint: endpoint,
+                    apiKey: cust.customFields2?.strings?.["0ad25800-6570-4443-92dd-aa1361ec81da"] || '',
+                    responsible: cust.customFields2?.strings?.["fb3f3369-5b1f-4948-a787-0939c03316f4"] || '',
+                    systemType: cust.customFields2?.strings?.["a48bbb59-e988-4504-9073-eefa4b9945c8"] || 'Cloud',
+                    subscriptionDate: invoiceData.subscriptionDate,
+                    expiryDate: invoiceData.expiryDate,
+                    lastSync: firebase.firestore.FieldValue.serverTimestamp()
+                };
+                
+                await db.collection('clients').doc(client.id).update(updateData);
+                updated++;
+                addLiveResult('System', true, `🔄 Updated: ${client.name}`, 'info');
+            }
+        } catch (error) {
+            failed++;
+            addLiveResult('System', false, `❌ Failed to update ${client.name}: ${error.message}`, 'error');
+        }
+    }
+    
+    addLiveResult('System', true, `✅ Update complete: ${updated} updated, ${failed} failed`, 'success');
+    await loadData();
+    updateClientsTable();
+    updateClientChecklist();
+}
+
+// ============================================
+// Delete selected clients from Firebase
+// ============================================
+async function deleteSelectedClients() {
+    const checkboxes = document.querySelectorAll('.client-checkbox:checked');
+    if (checkboxes.length === 0) {
+        addLiveResult('System', false, '⚠️ No clients selected', 'warning');
+        return;
+    }
+    
+    if (!confirm(`Delete ${checkboxes.length} client(s) from Firebase? This does NOT affect Manager.io.`)) return;
+    
+    let deleted = 0;
+    for (const cb of checkboxes) {
+        try {
+            await db.collection('clients').doc(cb.value).delete();
+            deleted++;
+        } catch(e) {
+            addLiveResult('System', false, `❌ Failed to delete`, 'error');
+        }
+    }
+    
+    addLiveResult('System', true, `✅ Deleted ${deleted} client(s) from Firebase`, 'success');
+    await loadData();
+    updateClientsTable();
+    updateClientChecklist();
 }
 
 // ============================================
@@ -325,11 +436,11 @@ async function loadData() {
 // ============================================
 async function sendRequestToManager(client) {
     if (!client.endpoint) {
-        return { success: false, error: 'No endpoint configured for this client' };
+        return { success: false, error: 'No endpoint configured' };
     }
     
     if (!client.apiKey) {
-        return { success: false, error: 'No API key configured for this client' };
+        return { success: false, error: 'No API key configured' };
     }
     
     try {
@@ -351,7 +462,7 @@ async function sendRequestToManager(client) {
             const result = await response.text();
             return { success: true, data: result };
         }
-        return { success: false, error: `HTTP ${response.status}: ${response.statusText}` };
+        return { success: false, error: `HTTP ${response.status}` };
         
     } catch (error) {
         return { success: false, error: error.message };
@@ -363,13 +474,10 @@ async function sendRequestToManager(client) {
 // ============================================
 async function startSendingForClient(clientId) {
     const client = clients.find(c => c.id === clientId);
-    if (!client) {
-        addLiveResult('System', false, `Client not found`, 'error');
-        return;
-    }
+    if (!client) return;
     
     if (!client.endpoint || !client.apiKey) {
-        addLiveResult(client.name, false, `❌ Missing endpoint or API key - cannot send`, 'error');
+        addLiveResult(client.name, false, `❌ Missing endpoint or API key`, 'error');
         return;
     }
     
@@ -396,12 +504,11 @@ async function startSendingForClient(clientId) {
                 clientName: client.name,
                 clientCode: client.clientCode,
                 status: 'success',
-                response: result.data?.substring(0, 500) || 'OK',
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             
             if (sending.consecutiveSuccess >= successAttempts) {
-                addLiveResult(client.name, true, `🎯 Completed ${successAttempts} successful sends - stopping`);
+                addLiveResult(client.name, true, `🎯 Completed - stopping`);
                 stopSendingForClient(clientId);
             }
         } else {
@@ -441,11 +548,12 @@ function stopSendingForClient(clientId) {
 }
 
 function startAllSending() {
-    if (clients.length === 0) {
-        addLiveResult('System', false, 'No clients found. Click "Sync All from Manager.io" first.', 'error');
+    const clientsWithEndpoint = clients.filter(c => c.endpoint && c.apiKey);
+    if (clientsWithEndpoint.length === 0) {
+        addLiveResult('System', false, 'No clients with valid endpoint found', 'error');
         return;
     }
-    clients.forEach(c => startSendingForClient(c.id));
+    clientsWithEndpoint.forEach(c => startSendingForClient(c.id));
 }
 
 function stopAllSending() {
@@ -459,11 +567,13 @@ function updateStats() {
     const successCount = requests.filter(r => r.status === 'success').length;
     const failCount = requests.filter(r => r.status === 'error').length;
     const activeCount = activeSending.size;
+    const clientsWithEndpoint = clients.filter(c => c.endpoint).length;
     
     const statsGrid = document.getElementById('statsGrid');
     if (statsGrid) {
         statsGrid.innerHTML = `
             <div class="stat-card"><div class="stat-number">${clients.length}</div><div>Total Clients</div></div>
+            <div class="stat-card"><div class="stat-number">${clientsWithEndpoint}</div><div>Has Endpoint</div></div>
             <div class="stat-card"><div class="stat-number">${successCount}</div><div>Successful Sends</div></div>
             <div class="stat-card"><div class="stat-number">${failCount}</div><div>Failed Sends</div></div>
             <div class="stat-card"><div class="stat-number">${activeCount}</div><div>Active Sending</div></div>
@@ -474,37 +584,44 @@ function updateStats() {
 function updateClientsTable() {
     const search = document.getElementById('searchInput')?.value.toLowerCase() || '';
     const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+    const endpointFilter = document.getElementById('endpointFilter')?.value || 'all';
     
     let filtered = clients.filter(c => {
         const matchesSearch = (c.name?.toLowerCase().includes(search) || c.clientCode?.toLowerCase().includes(search));
         const isActiveStatus = isActive(c);
         const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? isActiveStatus : !isActiveStatus);
-        return matchesSearch && matchesStatus;
+        const matchesEndpoint = endpointFilter === 'all' || (endpointFilter === 'yes' ? c.endpoint : !c.endpoint);
+        return matchesSearch && matchesStatus && matchesEndpoint;
     });
     
     const tbody = document.getElementById('clientsTableBody');
     if (!tbody) return;
     
     if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No clients found. Click "Sync All from Manager.io" to import.</td></tr>';
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center">No clients found.</td></tr>';
         return;
     }
     
     tbody.innerHTML = filtered.map(c => {
         const isActiveStatus = isActive(c);
         const isSending = activeSending.has(c.id);
+        const hasEndpoint = c.endpoint ? '✅' : '❌';
+        const endpointStatusClass = c.endpoint ? 'status-active' : 'status-no-endpoint';
+        
         return `
             <tr>
                 <td><input type="checkbox" class="client-checkbox" value="${c.id}"></td>
-                <td><strong>${escapeHtml(c.name) || '—'}</strong><br><small style="color:#64748b">${escapeHtml(c.responsible) || ''}</small></td>
+                <td><strong>${escapeHtml(c.name) || '—'}</strong><br><small>${escapeHtml(c.responsible) || ''}</small></td>
                 <td>${escapeHtml(c.clientCode) || '—'}</td>
                 <td>${escapeHtml(c.phone) || '—'}</td>
                 <td>${c.expiryDate || '—'}</td>
+                <td>${escapeHtml(c.systemType) || 'Cloud'}</td>
+                <td><span class="status-badge ${endpointStatusClass}">${hasEndpoint}</span></td>
                 <td><span class="status-badge ${isActiveStatus ? 'status-active' : 'status-expired'}">${isActiveStatus ? 'Active' : 'Expired'}</span></td>
                 <td>
                     ${isSending ? 
                         `<button class="btn btn-danger btn-sm" onclick="stopSendingForClient('${c.id}')">⏹️ Stop</button>` :
-                        `<button class="btn btn-success btn-sm" onclick="startSendingForClient('${c.id}')">▶️ Send</button>`
+                        `<button class="btn btn-success btn-sm" onclick="startSendingForClient('${c.id}')" ${!c.endpoint ? 'disabled' : ''}>▶️ Send</button>`
                     }
                 </td>
             </tr>
@@ -516,17 +633,19 @@ function updateClientChecklist() {
     const container = document.getElementById('clientChecklist');
     if (!container) return;
     
-    if (clients.length === 0) {
-        container.innerHTML = '<div class="client-item">No clients found. Click "Sync All from Manager.io" first.</div>';
+    const clientsWithEndpoint = clients.filter(c => c.endpoint && c.apiKey);
+    
+    if (clientsWithEndpoint.length === 0) {
+        container.innerHTML = '<div class="client-item">No clients with valid endpoint found. Sync customers first.</div>';
         return;
     }
     
-    container.innerHTML = clients.map(c => `
+    container.innerHTML = clientsWithEndpoint.map(c => `
         <div class="client-item">
             <input type="checkbox" id="check_${c.id}" value="${c.id}" ${activeSending.has(c.id) ? 'checked' : ''}>
             <label for="check_${c.id}">
                 <strong>${escapeHtml(c.name) || '—'}</strong> (${escapeHtml(c.clientCode) || '—'})
-                ${c.endpoint ? '✅' : '❌ No endpoint'}
+                <span style="font-size:11px;color:#64748b"> - Expires: ${c.expiryDate || 'N/A'}</span>
             </label>
         </div>
     `).join('');
@@ -539,7 +658,7 @@ function updatePriorityClients() {
     const expiringSoon = clients.filter(c => {
         if (!c.expiryDate) return false;
         const daysLeft = Math.ceil((new Date(c.expiryDate) - new Date()) / (1000*60*60*24));
-        return daysLeft <= 7 && daysLeft >= 0;
+        return daysLeft <= 7 && daysLeft >= 0 && c.endpoint;
     }).slice(0,5);
     
     if (expiringSoon.length === 0) {
@@ -562,8 +681,20 @@ function isActive(client) {
 
 function filterClients() { updateClientsTable(); }
 
+function selectAllClients() {
+    document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = true);
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) selectAllCheckbox.checked = true;
+}
+
+function deselectAllClients() {
+    document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = false);
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    if (selectAllCheckbox) selectAllCheckbox.checked = false;
+}
+
 function toggleSelectAll() {
-    const isChecked = document.getElementById('selectAll')?.checked;
+    const isChecked = document.getElementById('selectAllCheckbox')?.checked;
     document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = isChecked);
 }
 
@@ -664,7 +795,7 @@ function showTab(tabName) {
 // Initialize
 // ============================================
 async function init() {
-    addLiveResult('System', true, '🚀 System ready! Click "Sync All from Manager.io" to import customers.', 'info');
+    addLiveResult('System', true, '🚀 System ready! Click "Sync All from Manager.io" to import customers with endpoints.', 'info');
     await loadData();
     updateClientsTable();
     updateClientChecklist();
