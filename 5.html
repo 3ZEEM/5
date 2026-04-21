@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Manager.io → Firebase Full System</title>
+    <title>نظام إدارة العملاء - Manager.io + Firebase</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: system-ui, -apple-system, sans-serif; background: #f0f2f5; padding: 20px; direction: ltr; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; direction: rtl; }
         .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
         .header { background: linear-gradient(135deg, #1d6fcf, #7c3aed); color: white; padding: 20px; text-align: center; }
         .nav-tabs { display: flex; background: #2d3748; gap: 2px; flex-wrap: wrap; }
@@ -24,9 +24,9 @@
         .stat-number { font-size: 28px; font-weight: bold; color: #1d6fcf; }
         
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
+        th, td { padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
         th { background: #f1f5f9; position: sticky; top: 0; }
-        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
+        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin: 2px; }
         .btn-success { background: #16a34a; color: white; }
         .btn-danger { background: #dc2626; color: white; }
         .btn-primary { background: #1d6fcf; color: white; }
@@ -62,71 +62,73 @@
 <body>
 <div class="container">
     <div class="header">
-        <h1>🚀 Manager.io → Firebase Full System</h1>
-        <p>Sync customers, send placement requests, track invoices</p>
+        <h1>🚀 نظام إدارة العملاء المتكامل</h1>
+        <p>مزامنة العملاء من Manager.io - إرسال Placement - تقارير متقدمة</p>
     </div>
     
     <div class="nav-tabs">
-        <button class="nav-tab active" onclick="showTab('dashboard')">📊 Dashboard</button>
-        <button class="nav-tab" onclick="showTab('clients')">👥 Clients</button>
-        <button class="nav-tab" onclick="showTab('send')">📤 Send Requests</button>
-        <button class="nav-tab" onclick="showTab('reports')">📈 Reports</button>
+        <button class="nav-tab active" onclick="showTab('dashboard')">📊 لوحة التحكم</button>
+        <button class="nav-tab" onclick="showTab('clients')">👥 العملاء</button>
+        <button class="nav-tab" onclick="showTab('send')">📤 إرسال الطلبات</button>
+        <button class="nav-tab" onclick="showTab('reports')">📈 التقارير</button>
     </div>
     
     <div class="tab-content">
         <div id="dashboard" class="tab-pane active">
             <div class="stats-grid" id="statsGrid"></div>
             <div class="chart-container"><canvas id="requestsChart"></canvas></div>
-            <h3>📋 Priority Clients</h3>
+            <h3>📋 العملاء المنتهية اشتراكهم قريباً</h3>
             <div id="priorityClients"></div>
         </div>
         
         <div id="clients" class="tab-pane">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h2>👥 Clients</h2>
-                <button class="sync-btn" onclick="fetchAndSyncAllCustomers()">🔄 Sync All from Manager.io</button>
-                <button class="btn btn-warning btn-sm" onclick="debugAllFields()">🔍 Debug All Fields</button>
+                <h2>👥 العملاء</h2>
+                <button class="sync-btn" onclick="fetchAndSyncAllCustomers()">🔄 مزامنة الكل من Manager.io</button>
+                <button class="btn btn-warning btn-sm" onclick="debugAllFields()">🔍 Debug</button>
             </div>
             
             <div class="bulk-actions">
-                <button class="btn btn-primary btn-sm" onclick="selectAllClients()">☑️ Select All</button>
-                <button class="btn btn-warning btn-sm" onclick="deselectAllClients()">◻️ Deselect All</button>
-                <button class="btn btn-success btn-sm" onclick="updateSelectedClients()">🔄 Update Selected</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteSelectedClients()">🗑️ Delete Selected</button>
+                <button class="btn btn-primary btn-sm" onclick="selectAllClients()">☑️ تحديد الكل</button>
+                <button class="btn btn-warning btn-sm" onclick="deselectAllClients()">◻️ إلغاء الكل</button>
+                <button class="btn btn-success btn-sm" onclick="updateSelectedClients()">🔄 تحديث المحددين</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteSelectedClients()">🗑️ حذف المحددين</button>
             </div>
             
             <div class="filter-panel">
-                <div class="filter-group"><label>🔍 Search</label><input type="text" id="searchInput" placeholder="Name or code..." onkeyup="filterClients()"></div>
-                <div class="filter-group"><label>📅 Status</label><select id="statusFilter" onchange="filterClients()"><option value="all">All</option><option value="active">Active</option><option value="expired">Expired</option></select></div>
-                <div class="filter-group"><label>🔑 Has Endpoint</label><select id="endpointFilter" onchange="filterClients()"><option value="all">All</option><option value="yes">Has Endpoint</option><option value="no">No Endpoint</option></select></div>
-                <button class="btn btn-primary btn-sm" onclick="filterClients()">Apply</button>
+                <div class="filter-group"><label>🔍 بحث</label><input type="text" id="searchInput" placeholder="الاسم أو الكود..." onkeyup="filterClients()"></div>
+                <div class="filter-group"><label>📅 الحالة</label><select id="statusFilter" onchange="filterClients()"><option value="all">الكل</option><option value="active">نشط</option><option value="expired">منتهي</option></select></div>
+                <div class="filter-group"><label>🔑 لديه Endpoint</label><select id="endpointFilter" onchange="filterClients()"><option value="all">الكل</option><option value="yes">نعم</option><option value="no">لا</option></select></div>
+                <button class="btn btn-primary btn-sm" onclick="filterClients()">تطبيق</button>
             </div>
             
             <div class="table-container">
                 <table id="clientsTable" style="width: 100%; min-width: 700px;">
-                    <thead><tr><th><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th><th>Name</th><th>Code</th><th>Phone</th><th>Expiry</th><th>System</th><th>Last Invoice</th><th>Endpoint</th><th>Status</th><th>Actions</th></tr></thead>
+                    <thead>
+                        <tr><th><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th><th>الاسم</th><th>الكود</th><th>الجوال</th><th>تاريخ الانتهاء</th><th>النظام</th><th>Endpoint</th><th>الحالة</th><th>إجراءات</th></tr>
+                    </thead>
                     <tbody id="clientsTableBody"></tbody>
                 </table>
             </div>
         </div>
         
         <div id="send" class="tab-pane">
-            <h2>📤 Send Placement Requests</h2>
+            <h2>📤 إرسال طلبات Placement</h2>
             <div class="filter-panel">
-                <div class="filter-group"><label>⏱️ Interval (seconds)</label><input type="number" id="intervalInput" value="5" min="1" max="60"></div>
-                <div class="filter-group"><label>🔄 Success attempts</label><input type="number" id="attemptsInput" value="1" min="1" max="10"></div>
-                <button class="btn btn-primary" onclick="updateSettings()">💾 Save</button>
-                <button class="btn btn-success" onclick="startAllSending()">▶️ Start All</button>
-                <button class="btn btn-danger" onclick="stopAllSending()">⏹️ Stop All</button>
+                <div class="filter-group"><label>⏱️ الفاصل (ثواني)</label><input type="number" id="intervalInput" value="5" min="1" max="60"></div>
+                <div class="filter-group"><label>🔄 عدد المحاولات</label><input type="number" id="attemptsInput" value="1" min="1" max="10"></div>
+                <button class="btn btn-primary" onclick="updateSettings()">💾 حفظ</button>
+                <button class="btn btn-success" onclick="startAllSending()">▶️ إرسال الكل</button>
+                <button class="btn btn-danger" onclick="stopAllSending()">⏹️ إيقاف الكل</button>
             </div>
-            <h3>📋 Select Clients to Send</h3>
+            <h3>📋 اختيار العملاء للإرسال</h3>
             <div class="client-selection" id="clientChecklist"></div>
-            <h3>📡 Live Results</h3>
-            <div class="live-results" id="liveResults"><div class="log-entry log-info">System ready.</div></div>
+            <h3>📡 النتائج المباشرة</h3>
+            <div class="live-results" id="liveResults"><div class="log-entry log-info">النظام جاهز. اضغط "مزامنة الكل" أولاً.</div></div>
         </div>
         
         <div id="reports" class="tab-pane">
-            <h2>📈 Performance Reports</h2>
+            <h2>📈 التقارير</h2>
             <div class="chart-container"><canvas id="performanceChart"></canvas></div>
         </div>
     </div>
@@ -134,7 +136,7 @@
 
 <script>
 // ============================================
-// Firebase Configuration
+// إعدادات Firebase (المشروع التجريبي)
 // ============================================
 const firebaseConfig = {
     apiKey: "AIzaSyAEHL9LHEVf3alSIbomrUAiXR7bbaoB2hE",
@@ -149,82 +151,21 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // ============================================
-// PLACEMENT IDs - 🔥 اتركها فاضية واعبيها بنفسك 🔥
+// 🔥 API KEY النهائي الذي يعمل
 // ============================================
-const PLACEMENT_IDS = [
-"00082353-9fca-4ab4-91ae-20505479cbda",
-    "94d5307e-4332-4545-ab1e-1528c9032b7d",
-    "da996523-e77e-493c-b134-31c6c6ccae4a",
-    "2dac5598-128d-4954-b2e4-21515047b3a7",
-    "b8660bf5-d93b-4572-8edf-19bec47fb915",
-    "dd7d5b17-c4be-4369-b0f5-79361525f3c2",
-    "a26bbea1-57aa-4fd9-b7c9-e26b83114385",
-    "15e955cc-ec9b-4396-990e-b732fb74c57c",
-    "3be38758-7bf2-46f1-84a5-34e8748cade0",
-    "245e5943-0092-409d-96ae-e2ee10eac75b",
-    "4f819a77-dabc-4e28-8c99-172a1f595f3f",
-    "274fc6d0-2eac-43d0-8286-79c856e644aa",
-    "8c867cbb-cafd-4b34-b1af-f4187247bb82",
-    "a8f95068-fc73-43f7-aabb-fd868e506b51",
-    "7f368d97-8b7f-4b39-b156-dc66afd9496a",
-    "ec37c11e-2b67-49c6-8a58-6eccb7dd75ee",
-    "5170f738-cfba-42e3-bb8e-a7d5c5ab66f2",
-    "6d2dc48d-2053-4e45-8330-285ebd431242",
-    "0444eb18-6fc5-4d1f-be8b-c114da01832c",
-    "ab02f6ab-c91c-4fc2-b979-66a6682c200e",
-    "73af4c68-c347-4088-8846-758f1e7bc5bb",
-    "efc4f2cc-acf0-4815-a9a8-13bae00c6167",
-    "7eaafddc-54c9-4235-98d2-e8a1ee438150",
-    "43bef636-30a4-4cb1-a13b-0cb5a4717b92",
-    "dea4f923-c498-4504-b3ef-30be3c33175e",
-    "10ac4ab8-df74-4faf-b7fc-eb343556fb1b",
-    "a7dcf4fb-8d5c-4a71-a9b1-812ffdd753e9",
-    "1408c33b-6284-4f50-9e31-48cbea21f3cf",
-    "e495f4e8-5fad-48ac-8a66-f35049ac4ef3",
-    "b9c4cd62-7569-44f0-bc62-9df3007a6a5c",
-    "866217a4-f841-47de-a4e6-87152405c88d",
-    "ef68acfa-1a35-49f6-9c74-487a8af1dfdc",
-    "a0f6a539-f6a4-4a38-a69a-546a608a1f6d",
-    "50ac9f9d-b5f7-4787-8b12-db520db2ad70",
-    "789d22dc-bc42-4952-a591-60123b344726",
-    "79f99d26-e43a-4ecb-a9c9-0774601a9b2e",
-    "21ae8f9b-6289-4461-9267-c89617c42363",
-    "7662b887-c8d8-486e-98fd-f9dbcd41c6dc",
-    "4ab2302c-def1-49ec-abbf-b9a6dd393254",
-    "8f7510d9-a92d-4b4c-9421-fd745e198b3c",
-    "1c7ecd01-eb32-47b1-8ccd-e85f77969b03",
-    "d7ff6694-f1ef-419f-8ae2-55527a02e95f",
-    "0dbdbf8a-d80c-48e6-b453-bb7862445b7c",
-    "7affe9ee-731f-4936-8acf-15cae7bcacee",
-    "ba89de75-cb87-4bde-b20f-314f01b31037",
-    "2b604a37-c978-4592-955b-428b9c891c1d",
-    "38d606f7-6358-4ace-9d1d-f6c0b9ea9d68",
-    "2da30cfc-2e68-44db-aecd-83be44cd2bbf",
-    "1ca6ee3a-3583-41d8-83b1-74ac9129e1c1",
-    "ad12b60b-23bf-4421-94df-8be79cef533e",
-    "c37e4421-591a-4440-90ef-c5c9421e7948",
-    "81385989-81e5-48c7-a819-c344324c1c01",
-    "58b9eb90-f6b8-4abc-8ea1-12fd77b8336e",
-    "b4ab284f-2b63-40b2-90ab-0daf35a0f7c5",
-    "11de04ac-c448-4665-b206-8aa631e63532",
-    "6bfb652c-11cb-46fa-9e5a-c5950ccbae15",
-    "1d103fa7-6fc1-4951-811e-972968b842cc",
-    "ae6e14e3-1d3d-4996-b466-ba41732a8dbe",
-    "d33519a3-e8e0-4556-9833-b744a58dd2f7",
-    "b93f5bc7-99ae-4a4b-afc7-b7715bdfca45",
-    "75cdc055-6dec-4381-bc40-b670366e6abc",
-    "300d0043-fd85-405a-aee5-eaf2da7bd7fa",
-    "5ea52bc4-90ae-4e4a-aec4-ef1224b279ad",
-    "5e1468b4-8c7e-431a-837d-6e90384a3f4a",
-    "b4c1b390-351e-4579-b43b-412b920cddaf",
-    "5d6fae1e-ff34-4870-80e9-8a755842d46e",
-    "02572e0c-0167-4dbd-a392-08d8f67f3fe4",
-    "2306a5cc-4140-4ff1-92c7-5ceba32c170d",
-    "a3b1d610-b5e8-4f17-8e97-e53e69b78bb5",
-    "dadb7f95-a5dd-45c0-945d-6ad4ee28776e"];
+const API_KEY = "ClEwMDAt2KfZhNmF2LHYrdmE2Kkg2KfZhNir2KfZhtmK2Kkg2YXZhiDYp9mE2YHYp9iq2YjYsdipINin2YTYp9mE2YPYqtix2YjZhtmK2KkoMikSEgl/sJ0B8Zd4dBGs8eZfqU6wqxoSCX+wnQG9mXl3Ea1+uivWIb7y";
 
 // ============================================
-// Global Variables
+// PLACEMENT IDs
+// ============================================
+const PLACEMENT_IDS = [
+    "00082353-9fca-4ab4-91ae-20505479cbda",
+    "94d5307e-4332-4545-ab1e-1528c9032b7d",
+    "da996523-e77e-493c-b134-31c6c6ccae4a"
+];
+
+// ============================================
+// المتغيرات العامة
 // ============================================
 let clients = [];
 let requests = [];
@@ -235,7 +176,7 @@ let charts = {};
 let MANAGER_ORIGIN = null;
 
 // ============================================
-// postMessage wrapper
+// postMessage (لجلب العملاء من Manager.io)
 // ============================================
 function postMessageWithResponse(message) {
     return new Promise((resolve, reject) => {
@@ -258,84 +199,44 @@ function postMessageWithResponse(message) {
 }
 
 // ============================================
-// Fetch last invoice total for customer
+// 🔥 دالة الإرسال النهائية (التي نجحت)
 // ============================================
-async function fetchLastInvoiceForCustomer(customerId) {
-    try {
-        const data = await postMessageWithResponse({
-            type: 'api-request',
-            method: 'GET',
-            path: `/api4/sales-invoice-batch?CustomerId=${customerId}&PageSize=1`
-        });
-        
-        const invoices = data.items || [];
-        if (invoices.length > 0) {
-            const invoice = invoices[0].item;
-            return {
-                lastInvoiceTotal: invoice.total || 0,
-                lastInvoiceDate: invoice.issueDate || '',
-                lastInvoiceReference: invoice.reference || ''
-            };
-        }
-    } catch (error) {
-        console.error('Error fetching invoice:', error);
-    }
-    return { lastInvoiceTotal: 0, lastInvoiceDate: '', lastInvoiceReference: '' };
-}
-
-// ============================================
-// Debug: Show all fields
-// ============================================
-async function debugAllFields() {
-    addLiveResult('Debug', true, '🔍 Fetching sample data...', 'info');
+async function sendRequestToManager(client) {
+    const endpoint = "https://zatca.manager.io/api2/classic-custom-field-form";
+    
+    const payload = {
+        Name: 'EXP2025',
+        Placement: PLACEMENT_IDS,
+        Description: '<div>إرسال تلقائي من نظام الإدارة</div>',
+        Inactive: false
+    };
     
     try {
-        const data = await postMessageWithResponse({
-            type: 'api-request',
-            method: 'GET',
-            path: '/api4/customer-batch?PageSize=1'
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': API_KEY
+            },
+            body: JSON.stringify(payload)
         });
         
-        if (data.items && data.items.length > 0) {
-            const customer = data.items[0].item;
-            addLiveResult('Debug', true, `📋 Customer: ${customer.name}`, 'success');
-            
-            const strings = customer.customFields2?.strings || {};
-            const dates = customer.customFields2?.dates || {};
-            const arrays = customer.customFields2?.stringArrays || {};
-            
-            addLiveResult('Debug', true, '📋 Custom Fields:', 'info');
-            for (const [key, value] of Object.entries(strings)) {
-                if (value) addLiveResult('Debug', true, `  🔑 ${key}: "${value}"`, 'info');
-            }
-            for (const [key, value] of Object.entries(dates)) {
-                if (value) addLiveResult('Debug', true, `  📅 ${key}: "${value}"`, 'info');
-            }
-            for (const [key, value] of Object.entries(arrays)) {
-                if (value && value.length) addLiveResult('Debug', true, `  📋 ${key}: ${JSON.stringify(value)}`, 'info');
-            }
+        if (response.status === 201 || response.status === 200) {
+            const result = await response.json();
+            return { success: true, data: result };
         }
+        return { success: false, error: `HTTP ${response.status}` };
+        
     } catch (error) {
-        addLiveResult('Debug', false, `Error: ${error.message}`, 'error');
+        return { success: false, error: error.message };
     }
 }
 
 // ============================================
-// Compare data for smart update
-// ============================================
-function hasDataChanged(oldData, newData) {
-    const fields = ['name', 'clientCode', 'phone', 'endpoint', 'apiKey', 'responsible', 'systemType', 'subscriptionDate', 'expiryDate', 'lastInvoiceTotal'];
-    for (const f of fields) {
-        if ((oldData[f] || '') !== (newData[f] || '')) return true;
-    }
-    return false;
-}
-
-// ============================================
-// Sync customers from Manager.io
+// جلب العملاء من Manager.io
 // ============================================
 async function fetchAndSyncAllCustomers() {
-    addLiveResult('System', true, '🔄 Fetching customers from Manager.io...', 'info');
+    addLiveResult('النظام', true, '🔄 جلب العملاء من Manager.io...', 'info');
     
     try {
         const data = await postMessageWithResponse({
@@ -345,218 +246,77 @@ async function fetchAndSyncAllCustomers() {
         });
         
         const customers = data.items || [];
-        addLiveResult('System', true, `📦 Found ${customers.length} customers`, 'info');
+        addLiveResult('النظام', true, `📦 تم العثور على ${customers.length} عميل`, 'info');
         
-        let added = 0, updated = 0, skipped = 0, noChange = 0;
+        let added = 0, updated = 0, skipped = 0;
         
         for (const c of customers) {
             const cust = c.item;
-            
-            // Get custom fields
             const strings = cust.customFields2?.strings || {};
-            const dates = cust.customFields2?.dates || {};
-            const arrays = cust.customFields2?.stringArrays || {};
-            
             const endpoint = strings["bf1e38b7-6918-4d72-ac9a-8ded57579e60"] || '';
-            const apiKey = strings["0ad25800-6570-4443-92dd-aa1361ec81da"] || '';
             
             if (!endpoint) { skipped++; continue; }
             
-            // Get invoice data
-            const invoiceData = await fetchLastInvoiceForCustomer(cust.id);
-            
-            const newData = {
-                name: cust.name || 'Unknown',
+            const clientData = {
+                name: cust.name || 'غير معروف',
                 clientCode: cust.code || '',
                 phone: strings["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || '',
                 endpoint: endpoint,
-                apiKey: apiKey,
+                apiKey: strings["0ad25800-6570-4443-92dd-aa1361ec81da"] || '',
                 responsible: strings["fb3f3369-5b1f-4948-a787-0939c03316f4"] || '',
-                systemType: (arrays["a48bbb59-e988-4504-9073-eefa4b9945c8"] || ['Cloud'])[0],
-                subscriptionDate: dates["8c30f931-72cf-4f10-a952-778f4112158a"] || '',
-                expiryDate: dates["877c8553-9242-49b9-81e4-c91d969a53b9"] || '',
-                lastInvoiceTotal: invoiceData.lastInvoiceTotal,
-                lastInvoiceDate: invoiceData.lastInvoiceDate,
-                lastInvoiceReference: invoiceData.lastInvoiceReference,
+                systemType: (cust.customFields2?.stringArrays?.["a48bbb59-e988-4504-9073-eefa4b9945c8"] || ['سحابي'])[0],
+                subscriptionDate: cust.customFields2?.dates?.["8c30f931-72cf-4f10-a952-778f4112158a"] || '',
+                expiryDate: cust.customFields2?.dates?.["877c8553-9242-49b9-81e4-c91d969a53b9"] || '',
                 lastSync: firebase.firestore.FieldValue.serverTimestamp()
             };
             
-            const existing = await db.collection('clients').where('clientCode', '==', newData.clientCode).get();
+            const existing = await db.collection('clients').where('clientCode', '==', clientData.clientCode).get();
             
             if (existing.empty) {
-                await db.collection('clients').add(newData);
+                await db.collection('clients').add(clientData);
                 added++;
-                addLiveResult('System', true, `➕ Added: ${newData.name}`, 'success');
-            } else if (hasDataChanged(existing.docs[0].data(), newData)) {
-                await existing.docs[0].ref.update(newData);
-                updated++;
-                addLiveResult('System', true, `🔄 Updated: ${newData.name}`, 'info');
             } else {
-                noChange++;
+                await existing.docs[0].ref.update(clientData);
+                updated++;
             }
         }
         
-        addLiveResult('System', true, `✅ Sync: ${added} added, ${updated} updated, ${noChange} unchanged, ${skipped} skipped`, 'success');
+        addLiveResult('النظام', true, `✅ المزامنة: ${added} مضاف, ${updated} محدث, ${skipped} تم تخطيهم`, 'success');
         await loadData();
         updateClientsTable();
         updateClientChecklist();
         updateStats();
-    } catch (error) {
-        addLiveResult('System', false, `❌ Sync failed: ${error.message}`, 'error');
-    }
-}
-
-// ============================================
-// Update selected clients
-// ============================================
-async function updateSelectedClients() {
-    const checkboxes = document.querySelectorAll('.client-checkbox:checked');
-    if (checkboxes.length === 0) {
-        addLiveResult('System', false, '⚠️ No clients selected', 'warning');
-        return;
-    }
-    
-    addLiveResult('System', true, `🔄 Updating ${checkboxes.length} clients...`, 'info');
-    let updated = 0, unchanged = 0;
-    
-    for (const cb of checkboxes) {
-        const clientId = cb.value;
-        const oldClient = clients.find(c => c.id === clientId);
-        if (!oldClient) continue;
         
-        try {
-            const data = await postMessageWithResponse({
-                type: 'api-request',
-                method: 'GET',
-                path: `/api4/customer-batch?Code=${oldClient.clientCode}&PageSize=1`
-            });
-            
-            const customers = data.items || [];
-            if (customers.length > 0) {
-                const cust = customers[0].item;
-                const strings = cust.customFields2?.strings || {};
-                const dates = cust.customFields2?.dates || {};
-                const arrays = cust.customFields2?.stringArrays || {};
-                const invoiceData = await fetchLastInvoiceForCustomer(cust.id);
-                
-                const newData = {
-                    name: cust.name,
-                    phone: strings["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || '',
-                    endpoint: strings["bf1e38b7-6918-4d72-ac9a-8ded57579e60"] || '',
-                    apiKey: strings["0ad25800-6570-4443-92dd-aa1361ec81da"] || '',
-                    responsible: strings["fb3f3369-5b1f-4948-a787-0939c03316f4"] || '',
-                    systemType: (arrays["a48bbb59-e988-4504-9073-eefa4b9945c8"] || ['Cloud'])[0],
-                    subscriptionDate: dates["8c30f931-72cf-4f10-a952-778f4112158a"] || '',
-                    expiryDate: dates["877c8553-9242-49b9-81e4-c91d969a53b9"] || '',
-                    lastInvoiceTotal: invoiceData.lastInvoiceTotal,
-                    lastInvoiceDate: invoiceData.lastInvoiceDate,
-                    lastInvoiceReference: invoiceData.lastInvoiceReference,
-                    lastSync: firebase.firestore.FieldValue.serverTimestamp()
-                };
-                
-                if (hasDataChanged(oldClient, newData)) {
-                    await db.collection('clients').doc(clientId).update(newData);
-                    updated++;
-                    addLiveResult('System', true, `🔄 Updated: ${oldClient.name}`, 'info');
-                } else {
-                    unchanged++;
-                }
-            }
-        } catch (error) {
-            addLiveResult('System', false, `❌ Failed: ${oldClient.name}`, 'error');
-        }
+    } catch (error) {
+        addLiveResult('النظام', false, `❌ فشل المزامنة: ${error.message}`, 'error');
     }
-    
-    addLiveResult('System', true, `✅ Update: ${updated} updated, ${unchanged} unchanged`, 'success');
-    await loadData();
-    updateClientsTable();
-    updateClientChecklist();
 }
 
 // ============================================
-// Delete selected clients
+// تحميل البيانات من Firebase
 // ============================================
-async function deleteSelectedClients() {
-    const checkboxes = document.querySelectorAll('.client-checkbox:checked');
-    if (checkboxes.length === 0) return;
-    if (!confirm(`Delete ${checkboxes.length} client(s)?`)) return;
-    
-    let deleted = 0;
-    for (const cb of checkboxes) {
-        try {
-            await db.collection('clients').doc(cb.value).delete();
-            deleted++;
-        } catch(e) {}
-    }
-    
-    addLiveResult('System', true, `✅ Deleted ${deleted} client(s)`, 'success');
-    await loadData();
-    updateClientsTable();
-    updateClientChecklist();
-}
-
-// ============================================
-// Send request to Manager.io
-// ============================================
-async function sendRequestToManager(client) {
-    if (!client.endpoint) return { success: false, error: 'No endpoint' };
-    
+async function loadData() {
     try {
-        let path = client.endpoint;
-        if (path.startsWith('http')) {
-            const url = new URL(path);
-            path = url.pathname + url.search;
-        }
-        if (!path.startsWith('/')) path = '/' + path;
+        const clientsSnap = await db.collection('clients').get();
+        clients = [];
+        clientsSnap.forEach(doc => clients.push({ id: doc.id, ...doc.data() }));
         
-        // 🔥 الخطوة 1: أرسل GET أولاً (لتفعيل الجلسة)
-        addLiveResult(client.name, true, '🔄 Sending GET to activate session...', 'info');
-        await postMessageWithResponse({
-            type: 'api-request',
-            method: 'GET',
-            path: path
-        });
+        const requestsSnap = await db.collection('requests').orderBy('timestamp', 'desc').limit(500).get();
+        requests = [];
+        requestsSnap.forEach(doc => requests.push({ id: doc.id, ...doc.data() }));
         
-        // 🔥 الخطوة 2: ثم أرسل POST (زي 14.html)
-        addLiveResult(client.name, true, '📤 Sending POST with placement...', 'info');
-        const result = await postMessageWithResponse({
-            type: 'api-request',
-            method: 'POST',
-            path: path,
-            headers: {
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({
-                Name: 'EXP2025',
-                Placement: PLACEMENT_IDS,
-                Description: `<div id='BusinessDataLock' style='display: none;'> 
-                    <script>
-                        document.addEventListener('DOMContentLoaded', () => {
-                            const vModelForm = document.getElementById('v-model-form');
-                            if (vModelForm) {
-                                const inputs = vModelForm.querySelectorAll('input, select, textarea');
-                                inputs.forEach(input => input.disabled = true);
-                            }
-                        });
-                    <\/script>
-                </div>`,
-                Inactive: false
-            })
-        });
-        
-        return { success: true, data: result };
-        
-    } catch (error) {
-        addLiveResult(client.name, false, `❌ Error: ${error.message}`, 'error');
-        return { success: false, error: error.message };
-    }
-}// ============================================
-// Sending logic
+        updateStats();
+        updateCharts();
+    } catch (error) { console.error(error); }
+}
+
+// ============================================
+// بدء الإرسال لعميل
 // ============================================
 async function startSendingForClient(clientId) {
     const client = clients.find(c => c.id === clientId);
-    if (!client || !client.endpoint || !client.apiKey) {
-        addLiveResult(client?.name || 'Unknown', false, '❌ Missing endpoint/API key', 'error');
+    if (!client || !client.endpoint) {
+        addLiveResult(client?.name || 'غير معروف', false, '❌ لا يوجد Endpoint', 'error');
         return;
     }
     
@@ -571,7 +331,7 @@ async function startSendingForClient(clientId) {
         
         if (result.success) {
             sending.consecutiveSuccess++;
-            addLiveResult(client.name, true, `✅ Sent (${sending.consecutiveSuccess}/${successAttempts})`);
+            addLiveResult(client.name, true, `✅ تم الإرسال (${sending.consecutiveSuccess}/${successAttempts})`);
             
             await db.collection('requests').add({
                 clientId: client.id, clientName: client.name, clientCode: client.clientCode,
@@ -579,12 +339,12 @@ async function startSendingForClient(clientId) {
             });
             
             if (sending.consecutiveSuccess >= successAttempts) {
-                addLiveResult(client.name, true, `🎯 Completed - stopping`);
+                addLiveResult(client.name, true, `🎯 اكتمل - إيقاف`);
                 stopSendingForClient(clientId);
             }
         } else {
             sending.consecutiveSuccess = 0;
-            addLiveResult(client.name, false, `❌ Failed: ${result.error}`);
+            addLiveResult(client.name, false, `❌ فشل: ${result.error}`);
             
             await db.collection('requests').add({
                 clientId: client.id, clientName: client.name, clientCode: client.clientCode,
@@ -596,7 +356,7 @@ async function startSendingForClient(clientId) {
     }, sendingInterval);
     
     activeSending.set(clientId, sending);
-    addLiveResult(client.name, true, '▶️ Started sending', 'info');
+    addLiveResult(client.name, true, '▶️ بدء الإرسال', 'info');
     updateClientChecklist(); updateClientsTable();
 }
 
@@ -606,13 +366,13 @@ function stopSendingForClient(clientId) {
         sending.active = false;
         clearInterval(sending.intervalId);
         activeSending.delete(clientId);
-        addLiveResult(sending.clientName, false, '⏹️ Stopped', 'warning');
+        addLiveResult(sending.clientName, false, '⏹️ إيقاف', 'warning');
     }
     updateClientChecklist(); updateClientsTable();
 }
 
 function startAllSending() {
-    clients.filter(c => c.endpoint && c.apiKey).forEach(c => startSendingForClient(c.id));
+    clients.filter(c => c.endpoint).forEach(c => startSendingForClient(c.id));
 }
 
 function stopAllSending() {
@@ -620,34 +380,17 @@ function stopAllSending() {
 }
 
 // ============================================
-// Load data from Firebase
-// ============================================
-async function loadData() {
-    try {
-        const clientsSnap = await db.collection('clients').get();
-        clients = [];
-        clientsSnap.forEach(doc => clients.push({ id: doc.id, ...doc.data() }));
-        
-        const requestsSnap = await db.collection('requests').orderBy('timestamp', 'desc').limit(500).get();
-        requests = [];
-        requestsSnap.forEach(doc => requests.push({ id: doc.id, ...doc.data() }));
-        
-        updateStats(); updateCharts();
-    } catch (error) { console.error(error); }
-}
-
-// ============================================
-// UI Updates
+// تحديث واجهة المستخدم
 // ============================================
 function updateStats() {
     const successCount = requests.filter(r => r.status === 'success').length;
     const failCount = requests.filter(r => r.status === 'error').length;
     document.getElementById('statsGrid').innerHTML = `
-        <div class="stat-card"><div class="stat-number">${clients.length}</div><div>Total Clients</div></div>
-        <div class="stat-card"><div class="stat-number">${clients.filter(c=>c.endpoint).length}</div><div>Has Endpoint</div></div>
-        <div class="stat-card"><div class="stat-number">${successCount}</div><div>Successful</div></div>
-        <div class="stat-card"><div class="stat-number">${failCount}</div><div>Failed</div></div>
-        <div class="stat-card"><div class="stat-number">${activeSending.size}</div><div>Active</div></div>
+        <div class="stat-card"><div class="stat-number">${clients.length}</div><div>إجمالي العملاء</div></div>
+        <div class="stat-card"><div class="stat-number">${clients.filter(c=>c.endpoint).length}</div><div>لديهم Endpoint</div></div>
+        <div class="stat-card"><div class="stat-number">${successCount}</div><div>طلبات ناجحة</div></div>
+        <div class="stat-card"><div class="stat-number">${failCount}</div><div>طلبات فاشلة</div></div>
+        <div class="stat-card"><div class="stat-number">${activeSending.size}</div><div>قيد الإرسال</div></div>
     `;
 }
 
@@ -671,16 +414,12 @@ function updateClientsTable() {
         <tr>
             <td><input type="checkbox" class="client-checkbox" value="${c.id}"></td>
             <td><strong>${escapeHtml(c.name)}</strong><br><small>${escapeHtml(c.responsible)}</small></td>
-            <td>${escapeHtml(c.clientCode)}</td>
-            <td>${escapeHtml(c.phone)}</td>
-            <td>${c.expiryDate || '—'}</td>
-            <td>${escapeHtml(c.systemType) || 'Cloud'}</td>
-            <td>${c.lastInvoiceTotal ? c.lastInvoiceTotal.toLocaleString() + ' $' : '—'}</td>
+            <td>${escapeHtml(c.clientCode)}</td>${escapeHtml(c.phone)}</td>${c.expiryDate || '—'}</td>${escapeHtml(c.systemType) || 'سحابي'}</td>
             <td><span class="status-badge ${c.endpoint ? 'status-active' : 'status-no-endpoint'}">${c.endpoint ? '✅' : '❌'}</span></td>
-            <td><span class="status-badge ${(!c.expiryDate || new Date(c.expiryDate) > new Date()) ? 'status-active' : 'status-expired'}">${(!c.expiryDate || new Date(c.expiryDate) > new Date()) ? 'Active' : 'Expired'}</span></td>
+            <td><span class="status-badge ${(!c.expiryDate || new Date(c.expiryDate) > new Date()) ? 'status-active' : 'status-expired'}">${(!c.expiryDate || new Date(c.expiryDate) > new Date()) ? 'نشط' : 'منتهي'}</span></td>
             <td>${activeSending.has(c.id) ? 
-                `<button class="btn btn-danger btn-sm" onclick="stopSendingForClient('${c.id}')">⏹️ Stop</button>` :
-                `<button class="btn btn-success btn-sm" onclick="startSendingForClient('${c.id}')" ${!c.endpoint ? 'disabled' : ''}>▶️ Send</button>`
+                `<button class="btn btn-danger btn-sm" onclick="stopSendingForClient('${c.id}')">⏹️ إيقاف</button>` :
+                `<button class="btn btn-success btn-sm" onclick="startSendingForClient('${c.id}')" ${!c.endpoint ? 'disabled' : ''}>▶️ إرسال</button>`
             }</td>
         </tr>
     `).join('');
@@ -690,11 +429,11 @@ function updateClientChecklist() {
     const container = document.getElementById('clientChecklist');
     if (!container) return;
     
-    const validClients = clients.filter(c => c.endpoint && c.apiKey);
+    const validClients = clients.filter(c => c.endpoint);
     container.innerHTML = validClients.map(c => `
         <div class="client-item">
             <input type="checkbox" id="check_${c.id}" value="${c.id}" ${activeSending.has(c.id) ? 'checked' : ''}>
-            <label for="check_${c.id}"><strong>${escapeHtml(c.name)}</strong> (${escapeHtml(c.clientCode)}) - Expires: ${c.expiryDate || 'N/A'}</label>
+            <label for="check_${c.id}"><strong>${escapeHtml(c.name)}</strong> (${escapeHtml(c.clientCode)}) - ينتهي: ${c.expiryDate || 'غير محدد'}</label>
         </div>
     `).join('');
 }
@@ -704,13 +443,24 @@ function updatePriorityClients() {
     if (!container) return;
     
     const expiring = clients.filter(c => c.expiryDate && new Date(c.expiryDate) > new Date() && new Date(c.expiryDate) - new Date() < 7*24*60*60*1000 && c.endpoint).slice(0,5);
-    container.innerHTML = expiring.map(c => `<div class="client-item"><strong>${escapeHtml(c.name)}</strong> - Expires: ${c.expiryDate}<button class="btn btn-primary btn-sm" onclick="startSendingForClient('${c.id}')">Send</button></div>`).join('') || '<div>No clients expiring soon</div>';
+    container.innerHTML = expiring.map(c => `<div class="client-item"><strong>${escapeHtml(c.name)}</strong> - ينتهي: ${c.expiryDate}<button class="btn btn-primary btn-sm" onclick="startSendingForClient('${c.id}')">إرسال</button></div>`).join('') || '<div>لا يوجد عملاء تنتهي اشتراكاتهم قريباً</div>';
 }
 
 function filterClients() { updateClientsTable(); }
 function selectAllClients() { document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = true); }
 function deselectAllClients() { document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = false); }
 function toggleSelectAll() { document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = document.getElementById('selectAllCheckbox')?.checked); }
+async function updateSelectedClients() { addLiveResult('النظام', true, '🔄 جاري تحديث المحددين...', 'info'); await fetchAndSyncAllCustomers(); }
+async function deleteSelectedClients() { 
+    const checkboxes = document.querySelectorAll('.client-checkbox:checked');
+    if (checkboxes.length === 0) return;
+    if (!confirm(`حذف ${checkboxes.length} عميل؟`)) return;
+    for (const cb of checkboxes) { try { await db.collection('clients').doc(cb.value).delete(); } catch(e) {} }
+    addLiveResult('النظام', true, `✅ تم حذف ${checkboxes.length} عميل`, 'success');
+    await loadData();
+    updateClientsTable();
+    updateClientChecklist();
+}
 
 function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
 
@@ -731,7 +481,7 @@ function updateSettings() {
     const attempts = parseInt(document.getElementById('attemptsInput')?.value);
     if (interval >= 1 && interval <= 60) sendingInterval = interval * 1000;
     if (attempts >= 1 && attempts <= 10) successAttempts = attempts;
-    addLiveResult('System', true, `⚙️ Interval: ${sendingInterval/1000}s, Attempts: ${successAttempts}`, 'info');
+    addLiveResult('النظام', true, `⚙️ الإعدادات: الفاصل ${sendingInterval/1000}ث، المحاولات ${successAttempts}`, 'info');
 }
 
 function updateCharts() {
@@ -740,10 +490,10 @@ function updateCharts() {
     requests.forEach(r => { const date = r.timestamp?.toDate?.() || new Date(r.timestamp); const key = date.toLocaleDateString(); if (last7Days[key]) { if (r.status === 'success') last7Days[key].success++; else last7Days[key].error++; } });
     
     const ctx1 = document.getElementById('requestsChart')?.getContext('2d');
-    if (ctx1) { if (charts.requests) charts.requests.destroy(); charts.requests = new Chart(ctx1, { type: 'line', data: { labels: Object.keys(last7Days), datasets: [{ label: 'Successful', data: Object.values(last7Days).map(d => d.success), borderColor: '#16a34a', fill: false }, { label: 'Failed', data: Object.values(last7Days).map(d => d.error), borderColor: '#dc2626', fill: false }] }, options: { responsive: true } }); }
+    if (ctx1) { if (charts.requests) charts.requests.destroy(); charts.requests = new Chart(ctx1, { type: 'line', data: { labels: Object.keys(last7Days), datasets: [{ label: 'ناجحة', data: Object.values(last7Days).map(d => d.success), borderColor: '#16a34a', fill: false }, { label: 'فاشلة', data: Object.values(last7Days).map(d => d.error), borderColor: '#dc2626', fill: false }] }, options: { responsive: true } }); }
     
     const ctx2 = document.getElementById('performanceChart')?.getContext('2d');
-    if (ctx2) { if (charts.performance) charts.performance.destroy(); const s = requests.filter(r => r.status === 'success').length, f = requests.filter(r => r.status === 'error').length; charts.performance = new Chart(ctx2, { type: 'doughnut', data: { labels: ['Successful', 'Failed'], datasets: [{ data: [s, f], backgroundColor: ['#16a34a', '#dc2626'] }] } }); }
+    if (ctx2) { if (charts.performance) charts.performance.destroy(); const s = requests.filter(r => r.status === 'success').length, f = requests.filter(r => r.status === 'error').length; charts.performance = new Chart(ctx2, { type: 'doughnut', data: { labels: ['ناجحة', 'فاشلة'], datasets: [{ data: [s, f], backgroundColor: ['#16a34a', '#dc2626'] }] } }); }
 }
 
 function showTab(tabName) {
@@ -755,9 +505,20 @@ function showTab(tabName) {
     if (tabName === 'clients') updateClientsTable();
 }
 
+async function debugAllFields() {
+    addLiveResult('Debug', true, '🔍 جلب معلومات التصحيح...', 'info');
+    try {
+        const data = await postMessageWithResponse({ type: 'api-request', method: 'GET', path: '/api4/customer-batch?PageSize=1' });
+        if (data.items?.length > 0) {
+            const cust = data.items[0].item;
+            addLiveResult('Debug', true, `📋 العميل: ${cust.name}`, 'success');
+            addLiveResult('Debug', true, `📋 CustomFields2: ${JSON.stringify(cust.customFields2, null, 2)}`, 'info');
+        }
+    } catch(e) { addLiveResult('Debug', false, `خطأ: ${e.message}`, 'error'); }
+}
+
 async function init() {
-    addLiveResult('System', true, '🚀 System ready! Click "Sync All" to import customers.', 'info');
-    addLiveResult('System', true, '📌 IMPORTANT: Fill PLACEMENT_IDS array with your UUIDs before sending!', 'warning');
+    addLiveResult('النظام', true, '🚀 النظام جاهز! اضغط "مزامنة الكل" لاستيراد العملاء.', 'info');
     await loadData();
     updateClientsTable(); updateClientChecklist(); updatePriorityClients(); updateStats(); updateCharts();
     setInterval(() => { loadData(); updateClientChecklist(); updateClientsTable(); updatePriorityClients(); }, 30000);
