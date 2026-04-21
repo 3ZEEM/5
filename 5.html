@@ -1,31 +1,126 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="en" dir="ltr">
 <head>
     <meta charset="UTF-8">
-    <title>Sync Customers to Firebase</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Manager.io → Firebase Full System</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
-        body { font-family: system-ui; padding: 20px; background: #f8fafc; }
-        .container { max-width: 800px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; }
-        button { background: #1d6fcf; color: white; padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
-        table { width: 100%; border-collapse: collapse; margin-top: 15px; }
-        th, td { padding: 8px; text-align: left; border-bottom: 1px solid #ddd; }
-        .success { background: #dcfce7; color: #15803d; padding: 10px; border-radius: 6px; }
-        .error { background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; }
-        .loading { background: #fff3cd; color: #856404; padding: 10px; border-radius: 6px; }
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: system-ui, -apple-system, sans-serif; background: #f0f2f5; padding: 20px; direction: ltr; }
+        .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
+        .header { background: linear-gradient(135deg, #1d6fcf, #7c3aed); color: white; padding: 20px; text-align: center; }
+        .nav-tabs { display: flex; background: #2d3748; gap: 2px; }
+        .nav-tab { flex: 1; padding: 15px; text-align: center; color: white; background: #1e293b; border: none; cursor: pointer; font-weight: 600; }
+        .nav-tab.active { background: #1d6fcf; }
+        .tab-content { padding: 25px; min-height: 500px; }
+        .tab-pane { display: none; }
+        .tab-pane.active { display: block; }
+        
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px,1fr)); gap: 15px; margin-bottom: 25px; }
+        .stat-card { background: #f8fafc; padding: 20px; border-radius: 10px; text-align: center; border-top: 3px solid #1d6fcf; }
+        .stat-number { font-size: 28px; font-weight: bold; color: #1d6fcf; }
+        
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
+        th { background: #f1f5f9; }
+        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; }
+        .btn-success { background: #16a34a; color: white; }
+        .btn-danger { background: #dc2626; color: white; }
+        .btn-primary { background: #1d6fcf; color: white; }
+        .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 12px; }
+        .status-active { background: #dcfce7; color: #15803d; }
+        .status-expired { background: #fee2e2; color: #b91c1c; }
+        
+        .live-results { background: #1e293b; color: #4ade80; padding: 15px; border-radius: 8px; font-family: monospace; height: 300px; overflow-y: auto; }
+        .log-entry { margin: 5px 0; padding: 5px; border-left: 3px solid; }
+        .log-success { border-color: #16a34a; }
+        .log-error { border-color: #dc2626; }
+        .log-info { border-color: #1d6fcf; }
+        
+        .client-selection { max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin: 15px 0; }
+        .client-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #e2e8f0; }
+        
+        .filter-panel { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 10px; }
+        .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group input, .filter-group select { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
+        
+        .chart-container { background: white; padding: 15px; border-radius: 10px; margin: 20px 0; height: 300px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h2>📋 Customers from Manager.io</h2>
-    <button onclick="fetchCustomers()">🔄 Fetch Customers</button>
-    <div id="result"></div>
-    <div id="customersTable"></div>
+    <div class="header">
+        <h1>🚀 Manager.io → Firebase Full System</h1>
+        <p>Manage clients, send requests, and track performance</p>
+    </div>
+    
+    <div class="nav-tabs">
+        <button class="nav-tab active" onclick="showTab('dashboard')">📊 Dashboard</button>
+        <button class="nav-tab" onclick="showTab('clients')">👥 Clients</button>
+        <button class="nav-tab" onclick="showTab('send')">📤 Send Requests</button>
+        <button class="nav-tab" onclick="showTab('reports')">📈 Reports</button>
+    </div>
+    
+    <div class="tab-content">
+        <!-- Dashboard -->
+        <div id="dashboard" class="tab-pane active">
+            <div class="stats-grid" id="statsGrid"></div>
+            <div class="chart-container">
+                <canvas id="requestsChart"></canvas>
+            </div>
+            <h3>📋 Priority Clients</h3>
+            <div id="priorityClients"></div>
+        </div>
+        
+        <!-- Clients -->
+        <div id="clients" class="tab-pane">
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+                <h2>👥 Clients</h2>
+                <button class="btn btn-primary" onclick="fetchAndSyncAllCustomers()">🔄 Sync All from Manager.io</button>
+            </div>
+            <div class="filter-panel">
+                <div class="filter-group"><label>🔍 Search</label><input type="text" id="searchInput" placeholder="Name or code..." onkeyup="filterClients()"></div>
+                <div class="filter-group"><label>📅 Status</label><select id="statusFilter" onchange="filterClients()"><option value="all">All</option><option value="active">Active</option><option value="expired">Expired</option></select></div>
+            </div>
+            <div class="table-container" style="overflow-x: auto;">
+                <table id="clientsTable">
+                    <thead><tr><th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th><th>Name</th><th>Code</th><th>Phone</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead>
+                    <tbody id="clientsTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+        
+        <!-- Send -->
+        <div id="send" class="tab-pane">
+            <h2>📤 Send Requests</h2>
+            <div class="filter-panel">
+                <div class="filter-group"><label>⏱️ Interval (seconds)</label><input type="number" id="intervalInput" value="5" min="1" max="60"></div>
+                <div class="filter-group"><label>🔄 Success attempts</label><input type="number" id="attemptsInput" value="1" min="1" max="10"></div>
+                <button class="btn btn-primary" onclick="updateSettings()">💾 Save</button>
+                <button class="btn btn-success" onclick="startAllSending()">▶️ Start All</button>
+                <button class="btn btn-danger" onclick="stopAllSending()">⏹️ Stop All</button>
+            </div>
+            <div class="client-selection" id="clientChecklist"></div>
+            <h3>📡 Live Results</h3>
+            <div class="live-results" id="liveResults"><div class="log-entry log-info">System ready. Select clients and click Start.</div></div>
+        </div>
+        
+        <!-- Reports -->
+        <div id="reports" class="tab-pane">
+            <h2>📈 Reports</h2>
+            <div class="chart-container"><canvas id="performanceChart"></canvas></div>
+            <div id="reportsContent"></div>
+        </div>
+    </div>
 </div>
 
 <script>
-// Firebase config (test project)
+// ============================================
+// Firebase Configuration (test-e6f8e)
+// ============================================
 const firebaseConfig = {
     apiKey: "AIzaSyAEHL9LHEVf3alSIbomrUAiXR7bbaoB2hE",
     authDomain: "test-e6f8e.firebaseapp.com",
@@ -34,11 +129,22 @@ const firebaseConfig = {
     messagingSenderId: "435354240397",
     appId: "1:435354240397:web:4a159450b23500491269c4"
 };
+
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // ============================================
-// postMessage wrapper (same as working index.html)
+// Global Variables
+// ============================================
+let clients = [];
+let requests = [];
+let activeSending = new Map();
+let sendingInterval = 5000;
+let successAttempts = 1;
+let charts = {};
+
+// ============================================
+// postMessage wrapper (for Manager.io API)
 // ============================================
 let MANAGER_ORIGIN = null;
 
@@ -47,7 +153,7 @@ function postMessageWithResponse(message) {
         const requestId = crypto.randomUUID();
         const timer = setTimeout(() => {
             window.removeEventListener('message', handler);
-            reject(new Error('Timeout — Manager.io did not respond'));
+            reject(new Error('Timeout — Manager.io not responding'));
         }, 15000);
         
         function handler(event) {
@@ -60,24 +166,18 @@ function postMessageWithResponse(message) {
                 resolve(event.data.body);
             }
         }
-        
         window.addEventListener('message', handler);
         window.parent.postMessage({ ...message, requestId }, '*');
     });
 }
 
 // ============================================
-// Fetch all customers from Manager.io
+// Fetch and sync all customers from Manager.io to Firebase
 // ============================================
-async function fetchCustomers() {
-    const resultDiv = document.getElementById('result');
-    const tableDiv = document.getElementById('customersTable');
-    
-    resultDiv.innerHTML = '<div class="loading">🔄 Fetching customers from Manager.io...</div>';
-    tableDiv.innerHTML = '';
+async function fetchAndSyncAllCustomers() {
+    addLiveResult('System', true, '🔄 Fetching customers from Manager.io...', 'info');
     
     try {
-        // Fetch all customers using the batch endpoint
         const data = await postMessageWithResponse({
             type: 'api-request',
             method: 'GET',
@@ -85,74 +185,368 @@ async function fetchCustomers() {
         });
         
         const customers = data.items || [];
+        addLiveResult('System', true, `📦 Found ${customers.length} customers in Manager.io`, 'info');
         
-        if (customers.length === 0) {
-            resultDiv.innerHTML = '<div class="error">❌ No customers found</div>';
-            return;
-        }
-        
-        resultDiv.innerHTML = `<div class="success">✅ Found ${customers.length} customers</div>`;
-        
-        // Build table
-        let html = `
-            <table>
-                <thead>
-                    <tr><th>Name</th><th>Code</th><th>Phone</th><th>Status</th><th>Action</th></tr>
-                </thead>
-                <tbody>
-        `;
+        let added = 0;
+        let updated = 0;
         
         for (const c of customers) {
-            const customer = c.item;
-            const name = customer.name || '—';
-            const code = customer.code || '—';
-            const phone = customer.customFields2?.strings?.["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || '—';
-            const status = customer.inactive ? 'Inactive' : 'Active';
+            const cust = c.item;
+            const clientData = {
+                name: cust.name || 'Unknown',
+                clientCode: cust.code || '',
+                phone: cust.customFields2?.strings?.["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || '',
+                endpoint: cust.customFields2?.strings?.["bf1e38b7-6918-4d72-ac9a-8ded57579e60"] || '',
+                subscriptionDate: new Date().toISOString().split('T')[0],
+                expiryDate: calculateExpiryDate(),
+                amountPaid: '0',
+                systemType: 'Cloud',
+                status: cust.inactive ? 'inactive' : 'active',
+                lastSync: firebase.firestore.FieldValue.serverTimestamp()
+            };
             
-            html += `
-                <tr>
-                    <td>${name}</td>
-                    <td>${code}</td>
-                    <td>${phone}</td>
-                    <td>${status}</td>
-                    <td><button onclick="syncToFirebase('${customer.id}', '${name.replace(/'/g, "\\'")}', '${code}')">📤 Sync</button></td>
-                </tr>
-            `;
+            // Check if exists
+            const existing = await db.collection('clients').where('clientCode', '==', clientData.clientCode).get();
+            
+            if (existing.empty) {
+                await db.collection('clients').add(clientData);
+                added++;
+            } else {
+                await existing.docs[0].ref.update(clientData);
+                updated++;
+            }
         }
         
-        html += `</tbody></table>`;
-        tableDiv.innerHTML = html;
+        addLiveResult('System', true, `✅ Sync complete: ${added} added, ${updated} updated`, 'success');
+        await loadData();
         
     } catch (error) {
-        resultDiv.innerHTML = `<div class="error">❌ Failed: ${error.message}</div>`;
+        addLiveResult('System', false, `❌ Sync failed: ${error.message}`, 'error');
+    }
+}
+
+function calculateExpiryDate() {
+    const d = new Date();
+    d.setFullYear(d.getFullYear() + 1);
+    return d.toISOString().split('T')[0];
+}
+
+// ============================================
+// Load data from Firebase
+// ============================================
+async function loadData() {
+    try {
+        const clientsSnap = await db.collection('clients').get();
+        clients = [];
+        clientsSnap.forEach(doc => clients.push({ id: doc.id, ...doc.data() }));
+        
+        const requestsSnap = await db.collection('requests').orderBy('timestamp', 'desc').limit(500).get();
+        requests = [];
+        requestsSnap.forEach(doc => requests.push({ id: doc.id, ...doc.data() }));
+        
+        updateUI();
+        updateCharts();
+        
+    } catch (error) {
+        console.error('Load error:', error);
     }
 }
 
 // ============================================
-// Sync single customer to Firebase
+// Send request to Manager.io
 // ============================================
-async function syncToFirebase(customerId, name, code) {
-    const resultDiv = document.getElementById('result');
-    resultDiv.innerHTML = `<div class="loading">🔄 Syncing ${name} to Firebase...</div>`;
+const PLACEMENT_IDS = [
+    "00082353-9fca-4ab4-91ae-20505479cbda",
+    "94d5307e-4332-4545-ab1e-1528c9032b7d",
+    "da996523-e77e-493c-b134-31c6c6ccae4a"
+    // ... add all your placement IDs here
+];
+
+async function sendRequestToManager(client) {
+    if (!client.endpoint) {
+        return { success: false, error: 'No endpoint configured' };
+    }
     
     try {
-        await db.collection('clients').add({
-            customerId: customerId,
-            name: name,
-            clientCode: code,
-            syncedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            source: "manager-extension"
+        const response = await fetch(client.endpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                Name: 'EXP2025',
+                Placement: PLACEMENT_IDS,
+                Description: '<div>Test submission</div>',
+                Inactive: false
+            })
         });
         
-        resultDiv.innerHTML = `<div class="success">✅ ${name} synced to Firebase successfully!</div>`;
-        
-        // Refresh the table to show synced status (optional)
-        fetchCustomers();
+        if (response.ok) {
+            return { success: true, data: await response.text() };
+        }
+        return { success: false, error: `HTTP ${response.status}` };
         
     } catch (error) {
-        resultDiv.innerHTML = `<div class="error">❌ Failed to sync ${name}: ${error.message}</div>`;
+        return { success: false, error: error.message };
     }
 }
+
+// ============================================
+// Sending logic
+// ============================================
+async function startSendingForClient(clientId) {
+    const client = clients.find(c => c.id === clientId);
+    if (!client || !client.endpoint) return;
+    
+    if (activeSending.has(clientId)) stopSendingForClient(clientId);
+    
+    const sending = {
+        active: true,
+        intervalId: null,
+        consecutiveSuccess: 0
+    };
+    
+    sending.intervalId = setInterval(async () => {
+        if (!sending.active) return;
+        
+        const result = await sendRequestToManager(client);
+        
+        if (result.success) {
+            sending.consecutiveSuccess++;
+            addLiveResult(client.name, true, `✅ Sent (${sending.consecutiveSuccess}/${successAttempts})`);
+            
+            await db.collection('requests').add({
+                clientId: client.id,
+                clientName: client.name,
+                status: 'success',
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+            
+            if (sending.consecutiveSuccess >= successAttempts) {
+                addLiveResult(client.name, true, `🎯 Completed ${successAttempts} successful sends - stopping`);
+                stopSendingForClient(clientId);
+            }
+        } else {
+            sending.consecutiveSuccess = 0;
+            addLiveResult(client.name, false, `❌ Failed: ${result.error}`);
+            
+            await db.collection('requests').add({
+                clientId: client.id,
+                clientName: client.name,
+                status: 'error',
+                error: result.error,
+                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+            });
+        }
+        
+        updateUI();
+        updateCharts();
+    }, sendingInterval);
+    
+    activeSending.set(clientId, sending);
+    addLiveResult(client.name, true, '▶️ Started sending', 'info');
+}
+
+function stopSendingForClient(clientId) {
+    const sending = activeSending.get(clientId);
+    if (sending) {
+        sending.active = false;
+        clearInterval(sending.intervalId);
+        activeSending.delete(clientId);
+        const client = clients.find(c => c.id === clientId);
+        if (client) addLiveResult(client.name, false, '⏹️ Stopped', 'warning');
+    }
+}
+
+function startAllSending() {
+    clients.forEach(c => startSendingForClient(c.id));
+}
+
+function stopAllSending() {
+    activeSending.forEach((_, id) => stopSendingForClient(id));
+}
+
+// ============================================
+// UI Updates
+// ============================================
+function updateUI() {
+    updateStats();
+    updateClientsTable();
+    updateClientChecklist();
+    updatePriorityClients();
+}
+
+function updateStats() {
+    const successCount = requests.filter(r => r.status === 'success').length;
+    const failCount = requests.filter(r => r.status === 'error').length;
+    
+    document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card"><div class="stat-number">${clients.length}</div><div>Total Clients</div></div>
+        <div class="stat-card"><div class="stat-number">${successCount}</div><div>Successful</div></div>
+        <div class="stat-card"><div class="stat-number">${failCount}</div><div>Failed</div></div>
+        <div class="stat-card"><div class="stat-number">${activeSending.size}</div><div>Active Sending</div></div>
+    `;
+}
+
+function updateClientsTable() {
+    const search = document.getElementById('searchInput')?.value.toLowerCase() || '';
+    const statusFilter = document.getElementById('statusFilter')?.value || 'all';
+    
+    let filtered = clients.filter(c => 
+        (c.name?.toLowerCase().includes(search) || c.clientCode?.toLowerCase().includes(search)) &&
+        (statusFilter === 'all' || (statusFilter === 'active' ? isActive(c) : !isActive(c)))
+    );
+    
+    const tbody = document.getElementById('clientsTableBody');
+    if (!tbody) return;
+    
+    tbody.innerHTML = filtered.map(c => {
+        const isActiveStatus = isActive(c);
+        return `
+            <tr>
+                <td><input type="checkbox" class="client-checkbox" value="${c.id}"></td>
+                <td>${c.name || '—'}</td>
+                <td>${c.clientCode || '—'}</td>
+                <td>${c.phone || '—'}</td>
+                <td>${c.expiryDate || '—'}</td>
+                <td><span class="status-badge ${isActiveStatus ? 'status-active' : 'status-expired'}">${isActiveStatus ? 'Active' : 'Expired'}</span></td>
+                <td>
+                    <button class="btn btn-success" onclick="startSendingForClient('${c.id}')">▶️ Send</button>
+                    <button class="btn btn-danger" onclick="stopSendingForClient('${c.id}')">⏹️ Stop</button>
+                </td>
+            </tr>
+        `;
+    }).join('');
+}
+
+function updateClientChecklist() {
+    const container = document.getElementById('clientChecklist');
+    if (!container) return;
+    
+    container.innerHTML = clients.map(c => `
+        <div class="client-item">
+            <input type="checkbox" id="check_${c.id}" value="${c.id}" ${activeSending.has(c.id) ? 'checked' : ''}>
+            <label for="check_${c.id}"><strong>${c.name || '—'}</strong> (${c.clientCode || '—'})</label>
+        </div>
+    `).join('');
+}
+
+function updatePriorityClients() {
+    const container = document.getElementById('priorityClients');
+    if (!container) return;
+    
+    const expiringSoon = clients.filter(c => {
+        if (!c.expiryDate) return false;
+        const daysLeft = Math.ceil((new Date(c.expiryDate) - new Date()) / (1000*60*60*24));
+        return daysLeft <= 7 && daysLeft >= 0;
+    }).slice(0,5);
+    
+    container.innerHTML = expiringSoon.length ? expiringSoon.map(c => `
+        <div class="client-item"><strong>${c.name}</strong> - Expires: ${c.expiryDate}</div>
+    `).join('') : '<div>No clients expiring soon</div>';
+}
+
+function isActive(client) {
+    if (!client.expiryDate) return true;
+    return new Date(client.expiryDate) > new Date();
+}
+
+function filterClients() { updateClientsTable(); }
+function toggleSelectAll() {
+    const isChecked = document.getElementById('selectAll')?.checked;
+    document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = isChecked);
+}
+
+function addLiveResult(client, success, message, type = null) {
+    const container = document.getElementById('liveResults');
+    if (!container) return;
+    
+    const logClass = type ? `log-${type}` : (success ? 'log-success' : 'log-error');
+    const time = new Date().toLocaleTimeString();
+    const entry = document.createElement('div');
+    entry.className = `log-entry ${logClass}`;
+    entry.innerHTML = `<strong>[${time}] ${client}:</strong> ${message}`;
+    container.appendChild(entry);
+    entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    if (container.children.length > 100) container.removeChild(container.firstChild);
+}
+
+function updateSettings() {
+    const interval = parseInt(document.getElementById('intervalInput')?.value);
+    const attempts = parseInt(document.getElementById('attemptsInput')?.value);
+    if (interval >= 1 && interval <= 60) sendingInterval = interval * 1000;
+    if (attempts >= 1 && attempts <= 10) successAttempts = attempts;
+    addLiveResult('System', true, `⚙️ Settings: interval=${sendingInterval/1000}s, attempts=${successAttempts}`, 'info');
+}
+
+// ============================================
+// Charts
+// ============================================
+function updateCharts() {
+    const last7Days = {};
+    for (let i = 6; i >= 0; i--) {
+        const d = new Date(); d.setDate(d.getDate() - i);
+        last7Days[d.toLocaleDateString()] = { success: 0, error: 0 };
+    }
+    
+    requests.forEach(r => {
+        const date = r.timestamp?.toDate?.() || new Date(r.timestamp);
+        const key = date.toLocaleDateString();
+        if (last7Days[key]) {
+            if (r.status === 'success') last7Days[key].success++;
+            else last7Days[key].error++;
+        }
+    });
+    
+    const ctx1 = document.getElementById('requestsChart')?.getContext('2d');
+    if (ctx1 && charts.requests) charts.requests.destroy();
+    if (ctx1) {
+        charts.requests = new Chart(ctx1, {
+            type: 'line',
+            data: {
+                labels: Object.keys(last7Days),
+                datasets: [
+                    { label: 'Successful', data: Object.values(last7Days).map(d => d.success), borderColor: '#16a34a', fill: false },
+                    { label: 'Failed', data: Object.values(last7Days).map(d => d.error), borderColor: '#dc2626', fill: false }
+                ]
+            },
+            options: { responsive: true, maintainAspectRatio: true }
+        });
+    }
+    
+    const ctx2 = document.getElementById('performanceChart')?.getContext('2d');
+    if (ctx2 && charts.performance) charts.performance.destroy();
+    if (ctx2) {
+        const success = requests.filter(r => r.status === 'success').length;
+        const failed = requests.filter(r => r.status === 'error').length;
+        charts.performance = new Chart(ctx2, {
+            type: 'doughnut',
+            data: { labels: ['Successful', 'Failed'], datasets: [{ data: [success, failed], backgroundColor: ['#16a34a', '#dc2626'] }] }
+        });
+    }
+}
+
+// ============================================
+// Tab switching
+// ============================================
+function showTab(tabName) {
+    document.querySelectorAll('.tab-pane').forEach(t => t.classList.remove('active'));
+    document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
+    document.getElementById(tabName).classList.add('active');
+    event?.target?.classList?.add('active');
+    if (tabName === 'reports') setTimeout(updateCharts, 100);
+}
+
+// ============================================
+// Initialize
+// ============================================
+async function init() {
+    await loadData();
+    updateUI();
+    updateCharts();
+    setInterval(() => { loadData(); }, 30000);
+    addLiveResult('System', true, '🚀 System ready! Click "Sync All from Manager.io" to import customers.', 'info');
+}
+
+init();
 </script>
 </body>
 </html>
