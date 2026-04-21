@@ -63,7 +63,7 @@
 <div class="container">
     <div class="header">
         <h1>🚀 Manager.io → Firebase Full System</h1>
-        <p>Sync customers with endpoints, send placement requests</p>
+        <p>Sync customers, send placement requests (same as 14.html)</p>
     </div>
     
     <div class="nav-tabs">
@@ -74,25 +74,20 @@
     </div>
     
     <div class="tab-content">
-        <!-- Dashboard -->
         <div id="dashboard" class="tab-pane active">
             <div class="stats-grid" id="statsGrid"></div>
-            <div class="chart-container">
-                <canvas id="requestsChart"></canvas>
-            </div>
-            <h3>📋 Priority Clients (Expiring Soon)</h3>
+            <div class="chart-container"><canvas id="requestsChart"></canvas></div>
+            <h3>📋 Priority Clients</h3>
             <div id="priorityClients"></div>
         </div>
         
-        <!-- Clients -->
         <div id="clients" class="tab-pane">
             <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                 <h2>👥 Clients</h2>
                 <button class="sync-btn" onclick="fetchAndSyncAllCustomers()">🔄 Sync All from Manager.io</button>
-                <button class="btn btn-warning btn-sm" onclick="debugInvoiceFields()">🔍 Debug Invoice Fields</button>
+                <button class="btn btn-warning btn-sm" onclick="debugAllFields()">🔍 Debug All Fields</button>
             </div>
             
-            <!-- Bulk Actions -->
             <div class="bulk-actions">
                 <button class="btn btn-primary btn-sm" onclick="selectAllClients()">☑️ Select All</button>
                 <button class="btn btn-warning btn-sm" onclick="deselectAllClients()">◻️ Deselect All</button>
@@ -109,25 +104,12 @@
             
             <div class="table-container">
                 <table id="clientsTable" style="width: 100%; min-width: 700px;">
-                    <thead>
-                        <tr>
-                            <th style="width:30px"><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
-                            <th>Name</th>
-                            <th>Code</th>
-                            <th>Phone</th>
-                            <th>Expiry</th>
-                            <th>System</th>
-                            <th>Endpoint</th>
-                            <th>Status</th>
-                            <th style="width:100px">Actions</th>
-                        </tr>
-                    </thead>
+                    <thead><tr><th><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th><th>Name</th><th>Code</th><th>Phone</th><th>Expiry</th><th>System</th><th>Endpoint</th><th>Status</th><th>Actions</th></tr></thead>
                     <tbody id="clientsTableBody"></tbody>
                 </table>
             </div>
         </div>
         
-        <!-- Send -->
         <div id="send" class="tab-pane">
             <h2>📤 Send Placement Requests</h2>
             <div class="filter-panel">
@@ -137,25 +119,21 @@
                 <button class="btn btn-success" onclick="startAllSending()">▶️ Start All</button>
                 <button class="btn btn-danger" onclick="stopAllSending()">⏹️ Stop All</button>
             </div>
-            <h3>📋 Select Clients to Send (only those with endpoint)</h3>
+            <h3>📋 Select Clients to Send</h3>
             <div class="client-selection" id="clientChecklist"></div>
             <h3>📡 Live Results</h3>
-            <div class="live-results" id="liveResults"><div class="log-entry log-info">System ready. Click "Sync All from Manager.io" first to import customers.</div></div>
+            <div class="live-results" id="liveResults"><div class="log-entry log-info">System ready.</div></div>
         </div>
         
-        <!-- Reports -->
         <div id="reports" class="tab-pane">
             <h2>📈 Performance Reports</h2>
             <div class="chart-container"><canvas id="performanceChart"></canvas></div>
-            <div id="reportsContent"></div>
         </div>
     </div>
 </div>
 
 <script>
-// ============================================
-// Firebase Configuration (test-e6f8e)
-// ============================================
+// Firebase Config
 const firebaseConfig = {
     apiKey: "AIzaSyAEHL9LHEVf3alSIbomrUAiXR7bbaoB2hE",
     authDomain: "test-e6f8e.firebaseapp.com",
@@ -168,38 +146,40 @@ const firebaseConfig = {
 firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
-// ============================================
-// Global Variables
-// ============================================
+// Global variables
 let clients = [];
 let requests = [];
 let activeSending = new Map();
 let sendingInterval = 5000;
 let successAttempts = 1;
 let charts = {};
+let MANAGER_ORIGIN = null;
 
 // ============================================
-// PLACEMENT IDs (Fixed - same for all clients)
+// PLACEMENT IDs (Same as 14.html)
 // ============================================
 const PLACEMENT_IDS = [
     "00082353-9fca-4ab4-91ae-20505479cbda",
     "94d5307e-4332-4545-ab1e-1528c9032b7d",
     "da996523-e77e-493c-b134-31c6c6ccae4a",
     "2dac5598-128d-4954-b2e4-21515047b3a7",
-    "b8660bf5-d93b-4572-8edf-19bec47fb915"
+    "b8660bf5-d93b-4572-8edf-19bec47fb915",
+    "dd7d5b17-c4be-4369-b0f5-79361525f3c2",
+    "a26bbea1-57aa-4fd9-b7c9-e26b83114385",
+    "15e955cc-ec9b-4396-990e-b732fb74c57c",
+    "3be38758-7bf2-46f1-84a5-34e8748cade0",
+    "245e5943-0092-409d-96ae-e2ee10eac75b"
 ];
 
 // ============================================
-// postMessage wrapper (for Manager.io API)
+// postMessage wrapper
 // ============================================
-let MANAGER_ORIGIN = null;
-
 function postMessageWithResponse(message) {
     return new Promise((resolve, reject) => {
         const requestId = crypto.randomUUID();
         const timer = setTimeout(() => {
             window.removeEventListener('message', handler);
-            reject(new Error('Timeout — Manager.io not responding'));
+            reject(new Error('Timeout'));
         }, 15000);
         
         function handler(event) {
@@ -218,37 +198,50 @@ function postMessageWithResponse(message) {
 }
 
 // ============================================
-// Debug: Find correct Invoice Field IDs
+// Debug: Show ALL fields from customer and invoice
 // ============================================
-async function debugInvoiceFields() {
-    addLiveResult('Debug', true, '🔍 Fetching invoice to detect field IDs...', 'info');
+async function debugAllFields() {
+    addLiveResult('Debug', true, '🔍 Fetching sample data...', 'info');
     
     try {
-        const data = await postMessageWithResponse({
+        // Get sample customer
+        const custData = await postMessageWithResponse({
+            type: 'api-request',
+            method: 'GET',
+            path: '/api4/customer-batch?PageSize=1'
+        });
+        
+        if (custData.items && custData.items.length > 0) {
+            const customer = custData.items[0].item;
+            addLiveResult('Debug', true, '📋 CUSTOMER Custom Fields:', 'info');
+            for (const [key, value] of Object.entries(customer.customFields2?.strings || {})) {
+                addLiveResult('Debug', true, `  🔑 ${key}: "${value}"`, 'info');
+            }
+        }
+        
+        // Get sample invoice
+        const invData = await postMessageWithResponse({
             type: 'api-request',
             method: 'GET',
             path: '/api4/sales-invoice-batch?PageSize=1'
         });
         
-        const invoices = data.items || [];
-        if (invoices.length > 0) {
-            const invoice = invoices[0].item;
-            addLiveResult('Debug', true, `📄 Found invoice: ${invoice.reference}`, 'success');
-            addLiveResult('Debug', true, `📋 Custom Fields:`, 'info');
-            
+        if (invData.items && invData.items.length > 0) {
+            const invoice = invData.items[0].item;
+            addLiveResult('Debug', true, '📄 INVOICE Custom Fields:', 'info');
             for (const [key, value] of Object.entries(invoice.customFields2?.strings || {})) {
                 addLiveResult('Debug', true, `  🔑 ${key}: "${value}"`, 'info');
             }
-        } else {
-            addLiveResult('Debug', false, 'No invoices found', 'error');
         }
+        
+        addLiveResult('Debug', true, '✅ Copy the IDs above and update the code.', 'success');
     } catch (error) {
         addLiveResult('Debug', false, `Error: ${error.message}`, 'error');
     }
 }
 
 // ============================================
-// Fetch last invoice for customer (get subscription dates)
+// Fetch invoice data
 // ============================================
 async function fetchLastInvoiceForCustomer(customerId) {
     try {
@@ -263,41 +256,35 @@ async function fetchLastInvoiceForCustomer(customerId) {
             const invoice = invoices[0].item;
             const customFields = invoice.customFields2?.strings || {};
             
-            // TODO: Replace these with the correct IDs from debug output
+            // TODO: Replace with your actual IDs from debug output
             return {
-                subscriptionDate: customFields["8c30f931-72cf-4f10-a952-778f4112158a"] || '',
-                expiryDate: customFields["877c8553-9242-49b9-81e4-c91d969a53b9"] || '',
-                systemType: customFields["a48bbb59-e988-4504-9073-eefa4b9945c8"] || ''
+                subscriptionDate: customFields["your_subscription_date_id"] || '',
+                expiryDate: customFields["your_expiry_date_id"] || '',
+                systemType: customFields["your_system_type_id"] || ''
             };
         }
     } catch (error) {
-        console.error('Error fetching invoice:', error);
+        console.error('Error:', error);
     }
     return { subscriptionDate: '', expiryDate: '', systemType: '' };
 }
 
 // ============================================
-// Compare two objects for changes (smart update)
+// Compare data for smart update
 // ============================================
-function hasDataChanged(existingData, newData) {
-    const fieldsToCompare = ['name', 'clientCode', 'phone', 'endpoint', 'apiKey', 
-                             'responsible', 'systemType', 'subscriptionDate', 'expiryDate'];
-    
-    for (const field of fieldsToCompare) {
-        const oldVal = existingData[field] || '';
-        const newVal = newData[field] || '';
-        if (oldVal !== newVal) {
-            return true;
-        }
+function hasDataChanged(oldData, newData) {
+    const fields = ['name', 'clientCode', 'phone', 'endpoint', 'apiKey', 'responsible', 'systemType', 'subscriptionDate', 'expiryDate'];
+    for (const f of fields) {
+        if ((oldData[f] || '') !== (newData[f] || '')) return true;
     }
     return false;
 }
 
 // ============================================
-// Fetch and sync ONLY customers with endpoint (with smart update)
+// Sync customers from Manager.io
 // ============================================
 async function fetchAndSyncAllCustomers() {
-    addLiveResult('System', true, '🔄 Fetching customers from Manager.io...', 'info');
+    addLiveResult('System', true, '🔄 Fetching customers...', 'info');
     
     try {
         const data = await postMessageWithResponse({
@@ -307,30 +294,17 @@ async function fetchAndSyncAllCustomers() {
         });
         
         const customers = data.items || [];
-        addLiveResult('System', true, `📦 Found ${customers.length} customers in Manager.io`, 'info');
-        
-        let added = 0;
-        let updated = 0;
-        let skipped = 0;
-        let noChange = 0;
+        let added = 0, updated = 0, skipped = 0, noChange = 0;
         
         for (const c of customers) {
             const cust = c.item;
-            
-            // Get custom fields from customer
             const endpoint = cust.customFields2?.strings?.["bf1e38b7-6918-4d72-ac9a-8ded57579e60"] || '';
             const apiKey = cust.customFields2?.strings?.["0ad25800-6570-4443-92dd-aa1361ec81da"] || '';
             
-            // SKIP if no endpoint
-            if (!endpoint) {
-                skipped++;
-                continue;
-            }
+            if (!endpoint) { skipped++; continue; }
             
-            // Get subscription dates from last invoice
             const invoiceData = await fetchLastInvoiceForCustomer(cust.id);
             
-            // Prepare client data
             const newData = {
                 name: cust.name || 'Unknown',
                 clientCode: cust.code || '',
@@ -338,51 +312,39 @@ async function fetchAndSyncAllCustomers() {
                 endpoint: endpoint,
                 apiKey: apiKey,
                 responsible: cust.customFields2?.strings?.["fb3f3369-5b1f-4948-a787-0939c03316f4"] || '',
-                systemType: invoiceData.systemType || cust.customFields2?.strings?.["a48bbb59-e988-4504-9073-eefa4b9945c8"] || 'Cloud',
+                systemType: invoiceData.systemType || 'Cloud',
                 subscriptionDate: invoiceData.subscriptionDate,
                 expiryDate: invoiceData.expiryDate,
-                amountPaid: '0',
-                status: cust.inactive ? 'inactive' : 'active',
                 lastSync: firebase.firestore.FieldValue.serverTimestamp()
             };
             
-            // Check if client already exists
             const existing = await db.collection('clients').where('clientCode', '==', newData.clientCode).get();
             
             if (existing.empty) {
-                // New client - add
                 await db.collection('clients').add(newData);
                 added++;
                 addLiveResult('System', true, `➕ Added: ${newData.name}`, 'success');
+            } else if (hasDataChanged(existing.docs[0].data(), newData)) {
+                await existing.docs[0].ref.update(newData);
+                updated++;
+                addLiveResult('System', true, `🔄 Updated: ${newData.name}`, 'info');
             } else {
-                // Existing client - check if data changed
-                const existingData = existing.docs[0].data();
-                
-                if (hasDataChanged(existingData, newData)) {
-                    await existing.docs[0].ref.update(newData);
-                    updated++;
-                    addLiveResult('System', true, `🔄 Updated: ${newData.name} (data changed)`, 'info');
-                } else {
-                    noChange++;
-                    // Silent skip - no log to avoid spam
-                }
+                noChange++;
             }
         }
         
-        addLiveResult('System', true, `✅ Sync complete: ${added} added, ${updated} updated, ${noChange} unchanged, ${skipped} skipped (no endpoint)`, 'success');
-        
+        addLiveResult('System', true, `✅ Sync: ${added} added, ${updated} updated, ${noChange} unchanged, ${skipped} skipped`, 'success');
         await loadData();
         updateClientsTable();
         updateClientChecklist();
         updateStats();
-        
     } catch (error) {
         addLiveResult('System', false, `❌ Sync failed: ${error.message}`, 'error');
     }
 }
 
 // ============================================
-// Update selected clients (only if changed)
+// Update selected clients
 // ============================================
 async function updateSelectedClients() {
     const checkboxes = document.querySelectorAll('.client-checkbox:checked');
@@ -391,106 +353,87 @@ async function updateSelectedClients() {
         return;
     }
     
-    addLiveResult('System', true, `🔄 Checking ${checkboxes.length} selected clients for changes...`, 'info');
-    
-    let updated = 0;
-    let unchanged = 0;
-    let failed = 0;
+    addLiveResult('System', true, `🔄 Updating ${checkboxes.length} clients...`, 'info');
+    let updated = 0, unchanged = 0;
     
     for (const cb of checkboxes) {
         const clientId = cb.value;
-        const existingClient = clients.find(c => c.id === clientId);
-        if (!existingClient) continue;
+        const oldClient = clients.find(c => c.id === clientId);
+        if (!oldClient) continue;
         
         try {
-            // Fetch fresh data from Manager.io
             const data = await postMessageWithResponse({
                 type: 'api-request',
                 method: 'GET',
-                path: `/api4/customer-batch?Code=${existingClient.clientCode}&PageSize=1`
+                path: `/api4/customer-batch?Code=${oldClient.clientCode}&PageSize=1`
             });
             
             const customers = data.items || [];
             if (customers.length > 0) {
                 const cust = customers[0].item;
-                const endpoint = cust.customFields2?.strings?.["bf1e38b7-6918-4d72-ac9a-8ded57579e60"] || '';
                 const invoiceData = await fetchLastInvoiceForCustomer(cust.id);
                 
                 const newData = {
                     name: cust.name,
                     phone: cust.customFields2?.strings?.["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || '',
-                    endpoint: endpoint,
+                    endpoint: cust.customFields2?.strings?.["bf1e38b7-6918-4d72-ac9a-8ded57579e60"] || '',
                     apiKey: cust.customFields2?.strings?.["0ad25800-6570-4443-92dd-aa1361ec81da"] || '',
                     responsible: cust.customFields2?.strings?.["fb3f3369-5b1f-4948-a787-0939c03316f4"] || '',
-                    systemType: invoiceData.systemType || cust.customFields2?.strings?.["a48bbb59-e988-4504-9073-eefa4b9945c8"] || 'Cloud',
+                    systemType: invoiceData.systemType,
                     subscriptionDate: invoiceData.subscriptionDate,
                     expiryDate: invoiceData.expiryDate,
                     lastSync: firebase.firestore.FieldValue.serverTimestamp()
                 };
                 
-                // Only update if changed
-                if (hasDataChanged(existingClient, newData)) {
+                if (hasDataChanged(oldClient, newData)) {
                     await db.collection('clients').doc(clientId).update(newData);
                     updated++;
-                    addLiveResult('System', true, `🔄 Updated: ${existingClient.name}`, 'info');
+                    addLiveResult('System', true, `🔄 Updated: ${oldClient.name}`, 'info');
                 } else {
                     unchanged++;
                 }
             }
         } catch (error) {
-            failed++;
-            addLiveResult('System', false, `❌ Failed to update ${existingClient.name}: ${error.message}`, 'error');
+            addLiveResult('System', false, `❌ Failed: ${oldClient.name}`, 'error');
         }
     }
     
-    addLiveResult('System', true, `✅ Update complete: ${updated} updated, ${unchanged} unchanged, ${failed} failed`, 'success');
+    addLiveResult('System', true, `✅ Update: ${updated} updated, ${unchanged} unchanged`, 'success');
     await loadData();
     updateClientsTable();
     updateClientChecklist();
 }
 
 // ============================================
-// Delete selected clients from Firebase
+// Delete selected clients
 // ============================================
 async function deleteSelectedClients() {
     const checkboxes = document.querySelectorAll('.client-checkbox:checked');
-    if (checkboxes.length === 0) {
-        addLiveResult('System', false, '⚠️ No clients selected', 'warning');
-        return;
-    }
-    
-    if (!confirm(`Delete ${checkboxes.length} client(s) from Firebase? This does NOT affect Manager.io.`)) return;
+    if (checkboxes.length === 0) return;
+    if (!confirm(`Delete ${checkboxes.length} client(s)?`)) return;
     
     let deleted = 0;
     for (const cb of checkboxes) {
         try {
             await db.collection('clients').doc(cb.value).delete();
             deleted++;
-        } catch(e) {
-            addLiveResult('System', false, `❌ Failed to delete`, 'error');
-        }
+        } catch(e) {}
     }
     
-    addLiveResult('System', true, `✅ Deleted ${deleted} client(s) from Firebase`, 'success');
+    addLiveResult('System', true, `✅ Deleted ${deleted} client(s)`, 'success');
     await loadData();
     updateClientsTable();
     updateClientChecklist();
 }
 
 // ============================================
-// Send request to Manager.io using postMessage
+// Send request (EXACTLY like 14.html)
 // ============================================
 async function sendRequestToManager(client) {
-    if (!client.endpoint) {
-        return { success: false, error: 'No endpoint configured' };
-    }
-    
-    if (!client.apiKey) {
-        return { success: false, error: 'No API key configured' };
-    }
+    if (!client.endpoint) return { success: false, error: 'No endpoint' };
+    if (!client.apiKey) return { success: false, error: 'No API key' };
     
     try {
-        // Extract path from endpoint URL
         let path = client.endpoint;
         if (path.startsWith('http')) {
             const url = new URL(path);
@@ -498,6 +441,7 @@ async function sendRequestToManager(client) {
         }
         if (!path.startsWith('/')) path = '/' + path;
         
+        // 🔥 EXACT SAME BODY as 14.html
         const result = await postMessageWithResponse({
             type: 'api-request',
             method: 'POST',
@@ -509,7 +453,17 @@ async function sendRequestToManager(client) {
             body: JSON.stringify({
                 Name: 'EXP2025',
                 Placement: PLACEMENT_IDS,
-                Description: '<div>Automated placement request</div>',
+                Description: `<div id='BusinessDataLock' style='display: none;'> 
+                    <script>
+                        document.addEventListener('DOMContentLoaded', () => {
+                            const vModelForm = document.getElementById('v-model-form');
+                            if (vModelForm) {
+                                const inputs = vModelForm.querySelectorAll('input, select, textarea');
+                                inputs.forEach(input => input.disabled = true);
+                            }
+                        });
+                    <\/script>
+                </div>`,
                 Inactive: false
             })
         });
@@ -526,21 +480,14 @@ async function sendRequestToManager(client) {
 // ============================================
 async function startSendingForClient(clientId) {
     const client = clients.find(c => c.id === clientId);
-    if (!client) return;
-    
-    if (!client.endpoint || !client.apiKey) {
-        addLiveResult(client.name, false, `❌ Missing endpoint or API key`, 'error');
+    if (!client || !client.endpoint || !client.apiKey) {
+        addLiveResult(client?.name || 'Unknown', false, '❌ Missing endpoint/API key', 'error');
         return;
     }
     
     if (activeSending.has(clientId)) stopSendingForClient(clientId);
     
-    const sending = {
-        active: true,
-        intervalId: null,
-        consecutiveSuccess: 0,
-        clientName: client.name
-    };
+    const sending = { active: true, intervalId: null, consecutiveSuccess: 0, clientName: client.name };
     
     sending.intervalId = setInterval(async () => {
         if (!sending.active) return;
@@ -552,11 +499,8 @@ async function startSendingForClient(clientId) {
             addLiveResult(client.name, true, `✅ Sent (${sending.consecutiveSuccess}/${successAttempts})`);
             
             await db.collection('requests').add({
-                clientId: client.id,
-                clientName: client.name,
-                clientCode: client.clientCode,
-                status: 'success',
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                clientId: client.id, clientName: client.name, clientCode: client.clientCode,
+                status: 'success', timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             
             if (sending.consecutiveSuccess >= successAttempts) {
@@ -568,23 +512,17 @@ async function startSendingForClient(clientId) {
             addLiveResult(client.name, false, `❌ Failed: ${result.error}`);
             
             await db.collection('requests').add({
-                clientId: client.id,
-                clientName: client.name,
-                clientCode: client.clientCode,
-                status: 'error',
-                error: result.error,
-                timestamp: firebase.firestore.FieldValue.serverTimestamp()
+                clientId: client.id, clientName: client.name, clientCode: client.clientCode,
+                status: 'error', error: result.error, timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
         }
         
-        updateStats();
-        updateCharts();
+        updateStats(); updateCharts();
     }, sendingInterval);
     
     activeSending.set(clientId, sending);
     addLiveResult(client.name, true, '▶️ Started sending', 'info');
-    updateClientChecklist();
-    updateClientsTable();
+    updateClientChecklist(); updateClientsTable();
 }
 
 function stopSendingForClient(clientId) {
@@ -595,17 +533,11 @@ function stopSendingForClient(clientId) {
         activeSending.delete(clientId);
         addLiveResult(sending.clientName, false, '⏹️ Stopped', 'warning');
     }
-    updateClientChecklist();
-    updateClientsTable();
+    updateClientChecklist(); updateClientsTable();
 }
 
 function startAllSending() {
-    const clientsWithEndpoint = clients.filter(c => c.endpoint && c.apiKey);
-    if (clientsWithEndpoint.length === 0) {
-        addLiveResult('System', false, 'No clients with valid endpoint found', 'error');
-        return;
-    }
-    clientsWithEndpoint.forEach(c => startSendingForClient(c.id));
+    clients.filter(c => c.endpoint && c.apiKey).forEach(c => startSendingForClient(c.id));
 }
 
 function stopAllSending() {
@@ -625,12 +557,8 @@ async function loadData() {
         requests = [];
         requestsSnap.forEach(doc => requests.push({ id: doc.id, ...doc.data() }));
         
-        updateStats();
-        updateCharts();
-        
-    } catch (error) {
-        console.error('Load error:', error);
-    }
+        updateStats(); updateCharts();
+    } catch (error) { console.error(error); }
 }
 
 // ============================================
@@ -639,19 +567,13 @@ async function loadData() {
 function updateStats() {
     const successCount = requests.filter(r => r.status === 'success').length;
     const failCount = requests.filter(r => r.status === 'error').length;
-    const activeCount = activeSending.size;
-    const clientsWithEndpoint = clients.filter(c => c.endpoint).length;
-    
-    const statsGrid = document.getElementById('statsGrid');
-    if (statsGrid) {
-        statsGrid.innerHTML = `
-            <div class="stat-card"><div class="stat-number">${clients.length}</div><div>Total Clients</div></div>
-            <div class="stat-card"><div class="stat-number">${clientsWithEndpoint}</div><div>Has Endpoint</div></div>
-            <div class="stat-card"><div class="stat-number">${successCount}</div><div>Successful Sends</div></div>
-            <div class="stat-card"><div class="stat-number">${failCount}</div><div>Failed Sends</div></div>
-            <div class="stat-card"><div class="stat-number">${activeCount}</div><div>Active Sending</div></div>
-        `;
-    }
+    document.getElementById('statsGrid').innerHTML = `
+        <div class="stat-card"><div class="stat-number">${clients.length}</div><div>Total Clients</div></div>
+        <div class="stat-card"><div class="stat-number">${clients.filter(c=>c.endpoint).length}</div><div>Has Endpoint</div></div>
+        <div class="stat-card"><div class="stat-number">${successCount}</div><div>Successful</div></div>
+        <div class="stat-card"><div class="stat-number">${failCount}</div><div>Failed</div></div>
+        <div class="stat-card"><div class="stat-number">${activeSending.size}</div><div>Active</div></div>
+    `;
 }
 
 function updateClientsTable() {
@@ -660,66 +582,43 @@ function updateClientsTable() {
     const endpointFilter = document.getElementById('endpointFilter')?.value || 'all';
     
     let filtered = clients.filter(c => {
-        const matchesSearch = (c.name?.toLowerCase().includes(search) || c.clientCode?.toLowerCase().includes(search));
-        const isActiveStatus = isActive(c);
-        const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? isActiveStatus : !isActiveStatus);
-        const matchesEndpoint = endpointFilter === 'all' || (endpointFilter === 'yes' ? c.endpoint : !c.endpoint);
-        return matchesSearch && matchesStatus && matchesEndpoint;
+        const matchSearch = (c.name?.toLowerCase().includes(search) || c.clientCode?.toLowerCase().includes(search));
+        const isActive = !c.expiryDate || new Date(c.expiryDate) > new Date();
+        const matchStatus = statusFilter === 'all' || (statusFilter === 'active' ? isActive : !isActive);
+        const matchEndpoint = endpointFilter === 'all' || (endpointFilter === 'yes' ? c.endpoint : !c.endpoint);
+        return matchSearch && matchStatus && matchEndpoint;
     });
     
     const tbody = document.getElementById('clientsTableBody');
     if (!tbody) return;
     
-    if (filtered.length === 0) {
-        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center">No clients found. Sync from Manager.io first.</td></tr>';
-        return;
-    }
-    
-    tbody.innerHTML = filtered.map(c => {
-        const isActiveStatus = isActive(c);
-        const isSending = activeSending.has(c.id);
-        const hasEndpoint = c.endpoint ? '✅' : '❌';
-        const endpointStatusClass = c.endpoint ? 'status-active' : 'status-no-endpoint';
-        
-        return `
-            <tr>
-                <td><input type="checkbox" class="client-checkbox" value="${c.id}"></td>
-                <td><strong>${escapeHtml(c.name) || '—'}</strong><br><small>${escapeHtml(c.responsible) || ''}</small></td>
-                <td>${escapeHtml(c.clientCode) || '—'}</td>
-                <td>${escapeHtml(c.phone) || '—'}</td>
-                <td>${c.expiryDate || '—'}</td>
-                <td>${escapeHtml(c.systemType) || 'Cloud'}</td>
-                <td><span class="status-badge ${endpointStatusClass}">${hasEndpoint}</span></td>
-                <td><span class="status-badge ${isActiveStatus ? 'status-active' : 'status-expired'}">${isActiveStatus ? 'Active' : 'Expired'}</span></td>
-                <td>
-                    ${isSending ? 
-                        `<button class="btn btn-danger btn-sm" onclick="stopSendingForClient('${c.id}')">⏹️ Stop</button>` :
-                        `<button class="btn btn-success btn-sm" onclick="startSendingForClient('${c.id}')" ${!c.endpoint ? 'disabled' : ''}>▶️ Send</button>`
-                    }
-                </td>
-            </tr>
-        `;
-    }).join('');
+    tbody.innerHTML = filtered.map(c => `
+        <tr>
+            <td><input type="checkbox" class="client-checkbox" value="${c.id}"></td>
+            <td><strong>${escapeHtml(c.name)}</strong><br><small>${escapeHtml(c.responsible)}</small></td>
+            <td>${escapeHtml(c.clientCode)}</td>
+            <td>${escapeHtml(c.phone)}</td>
+            <td>${c.expiryDate || '—'}</td>
+            <td>${escapeHtml(c.systemType) || 'Cloud'}</td>
+            <td><span class="status-badge ${c.endpoint ? 'status-active' : 'status-no-endpoint'}">${c.endpoint ? '✅' : '❌'}</span></td>
+            <td><span class="status-badge ${(!c.expiryDate || new Date(c.expiryDate) > new Date()) ? 'status-active' : 'status-expired'}">${(!c.expiryDate || new Date(c.expiryDate) > new Date()) ? 'Active' : 'Expired'}</span></td>
+            <td>${activeSending.has(c.id) ? 
+                `<button class="btn btn-danger btn-sm" onclick="stopSendingForClient('${c.id}')">⏹️ Stop</button>` :
+                `<button class="btn btn-success btn-sm" onclick="startSendingForClient('${c.id}')" ${!c.endpoint ? 'disabled' : ''}>▶️ Send</button>`
+            }</td>
+        </tr>
+    `).join('');
 }
 
 function updateClientChecklist() {
     const container = document.getElementById('clientChecklist');
     if (!container) return;
     
-    const clientsWithEndpoint = clients.filter(c => c.endpoint && c.apiKey);
-    
-    if (clientsWithEndpoint.length === 0) {
-        container.innerHTML = '<div class="client-item">No clients with valid endpoint found. Sync customers first.</div>';
-        return;
-    }
-    
-    container.innerHTML = clientsWithEndpoint.map(c => `
+    const validClients = clients.filter(c => c.endpoint && c.apiKey);
+    container.innerHTML = validClients.map(c => `
         <div class="client-item">
             <input type="checkbox" id="check_${c.id}" value="${c.id}" ${activeSending.has(c.id) ? 'checked' : ''}>
-            <label for="check_${c.id}">
-                <strong>${escapeHtml(c.name) || '—'}</strong> (${escapeHtml(c.clientCode) || '—'})
-                <span style="font-size:11px;color:#64748b"> - Expires: ${c.expiryDate || 'N/A'}</span>
-            </label>
+            <label for="check_${c.id}"><strong>${escapeHtml(c.name)}</strong> (${escapeHtml(c.clientCode)}) - Expires: ${c.expiryDate || 'N/A'}</label>
         </div>
     `).join('');
 }
@@ -728,68 +627,24 @@ function updatePriorityClients() {
     const container = document.getElementById('priorityClients');
     if (!container) return;
     
-    const expiringSoon = clients.filter(c => {
-        if (!c.expiryDate) return false;
-        const daysLeft = Math.ceil((new Date(c.expiryDate) - new Date()) / (1000*60*60*24));
-        return daysLeft <= 7 && daysLeft >= 0 && c.endpoint;
-    }).slice(0,5);
-    
-    if (expiringSoon.length === 0) {
-        container.innerHTML = '<div class="client-item">No clients expiring soon</div>';
-        return;
-    }
-    
-    container.innerHTML = expiringSoon.map(c => `
-        <div class="client-item">
-            <strong>${escapeHtml(c.name)}</strong> - Expires: ${c.expiryDate}
-            <button class="btn btn-primary btn-sm" onclick="startSendingForClient('${c.id}')">Send</button>
-        </div>
-    `).join('');
-}
-
-function isActive(client) {
-    if (!client.expiryDate) return true;
-    return new Date(client.expiryDate) > new Date();
+    const expiring = clients.filter(c => c.expiryDate && new Date(c.expiryDate) > new Date() && new Date(c.expiryDate) - new Date() < 7*24*60*60*1000 && c.endpoint).slice(0,5);
+    container.innerHTML = expiring.map(c => `<div class="client-item"><strong>${escapeHtml(c.name)}</strong> - Expires: ${c.expiryDate}<button class="btn btn-primary btn-sm" onclick="startSendingForClient('${c.id}')">Send</button></div>`).join('') || '<div>No clients expiring soon</div>';
 }
 
 function filterClients() { updateClientsTable(); }
+function selectAllClients() { document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = true); }
+function deselectAllClients() { document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = false); }
+function toggleSelectAll() { document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = document.getElementById('selectAllCheckbox')?.checked); }
 
-function selectAllClients() {
-    document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = true);
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    if (selectAllCheckbox) selectAllCheckbox.checked = true;
-}
-
-function deselectAllClients() {
-    document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = false);
-    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
-    if (selectAllCheckbox) selectAllCheckbox.checked = false;
-}
-
-function toggleSelectAll() {
-    const isChecked = document.getElementById('selectAllCheckbox')?.checked;
-    document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = isChecked);
-}
-
-function escapeHtml(str) {
-    if (!str) return '';
-    return str.replace(/[&<>]/g, function(m) {
-        if (m === '&') return '&amp;';
-        if (m === '<') return '&lt;';
-        if (m === '>') return '&gt;';
-        return m;
-    });
-}
+function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
 
 function addLiveResult(client, success, message, type = null) {
     const container = document.getElementById('liveResults');
     if (!container) return;
-    
     const logClass = type ? `log-${type}` : (success ? 'log-success' : 'log-error');
-    const time = new Date().toLocaleTimeString();
     const entry = document.createElement('div');
     entry.className = `log-entry ${logClass}`;
-    entry.innerHTML = `<strong>[${time}] ${escapeHtml(client)}:</strong> ${escapeHtml(message)}`;
+    entry.innerHTML = `<strong>[${new Date().toLocaleTimeString()}] ${escapeHtml(client)}:</strong> ${escapeHtml(message)}`;
     container.appendChild(entry);
     entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     if (container.children.length > 200) container.removeChild(container.firstChild);
@@ -800,81 +655,34 @@ function updateSettings() {
     const attempts = parseInt(document.getElementById('attemptsInput')?.value);
     if (interval >= 1 && interval <= 60) sendingInterval = interval * 1000;
     if (attempts >= 1 && attempts <= 10) successAttempts = attempts;
-    addLiveResult('System', true, `⚙️ Settings: interval=${sendingInterval/1000}s, attempts=${successAttempts}`, 'info');
+    addLiveResult('System', true, `⚙️ Interval: ${sendingInterval/1000}s, Attempts: ${successAttempts}`, 'info');
 }
 
-// ============================================
-// Charts
-// ============================================
 function updateCharts() {
     const last7Days = {};
-    for (let i = 6; i >= 0; i--) {
-        const d = new Date(); d.setDate(d.getDate() - i);
-        last7Days[d.toLocaleDateString()] = { success: 0, error: 0 };
-    }
-    
-    requests.forEach(r => {
-        const date = r.timestamp?.toDate?.() || new Date(r.timestamp);
-        const key = date.toLocaleDateString();
-        if (last7Days[key]) {
-            if (r.status === 'success') last7Days[key].success++;
-            else last7Days[key].error++;
-        }
-    });
+    for (let i = 6; i >= 0; i--) { const d = new Date(); d.setDate(d.getDate() - i); last7Days[d.toLocaleDateString()] = { success: 0, error: 0 }; }
+    requests.forEach(r => { const date = r.timestamp?.toDate?.() || new Date(r.timestamp); const key = date.toLocaleDateString(); if (last7Days[key]) { if (r.status === 'success') last7Days[key].success++; else last7Days[key].error++; } });
     
     const ctx1 = document.getElementById('requestsChart')?.getContext('2d');
-    if (ctx1 && charts.requests) charts.requests.destroy();
-    if (ctx1) {
-        charts.requests = new Chart(ctx1, {
-            type: 'line',
-            data: {
-                labels: Object.keys(last7Days),
-                datasets: [
-                    { label: 'Successful', data: Object.values(last7Days).map(d => d.success), borderColor: '#16a34a', fill: false, tension: 0.3 },
-                    { label: 'Failed', data: Object.values(last7Days).map(d => d.error), borderColor: '#dc2626', fill: false, tension: 0.3 }
-                ]
-            },
-            options: { responsive: true, maintainAspectRatio: true }
-        });
-    }
+    if (ctx1) { if (charts.requests) charts.requests.destroy(); charts.requests = new Chart(ctx1, { type: 'line', data: { labels: Object.keys(last7Days), datasets: [{ label: 'Successful', data: Object.values(last7Days).map(d => d.success), borderColor: '#16a34a', fill: false }, { label: 'Failed', data: Object.values(last7Days).map(d => d.error), borderColor: '#dc2626', fill: false }] }, options: { responsive: true } }); }
     
     const ctx2 = document.getElementById('performanceChart')?.getContext('2d');
-    if (ctx2 && charts.performance) charts.performance.destroy();
-    if (ctx2) {
-        const success = requests.filter(r => r.status === 'success').length;
-        const failed = requests.filter(r => r.status === 'error').length;
-        charts.performance = new Chart(ctx2, {
-            type: 'doughnut',
-            data: { labels: ['Successful', 'Failed'], datasets: [{ data: [success, failed], backgroundColor: ['#16a34a', '#dc2626'] }] },
-            options: { responsive: true, maintainAspectRatio: true }
-        });
-    }
+    if (ctx2) { if (charts.performance) charts.performance.destroy(); const s = requests.filter(r => r.status === 'success').length, f = requests.filter(r => r.status === 'error').length; charts.performance = new Chart(ctx2, { type: 'doughnut', data: { labels: ['Successful', 'Failed'], datasets: [{ data: [s, f], backgroundColor: ['#16a34a', '#dc2626'] }] } }); }
 }
 
-// ============================================
-// Tab switching
-// ============================================
 function showTab(tabName) {
     document.querySelectorAll('.tab-pane').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.getElementById(tabName).classList.add('active');
     if (event?.target) event.target.classList.add('active');
-    if (tabName === 'reports') setTimeout(updateCharts, 100);
     if (tabName === 'send') updateClientChecklist();
     if (tabName === 'clients') updateClientsTable();
 }
 
-// ============================================
-// Initialize
-// ============================================
 async function init() {
-    addLiveResult('System', true, '🚀 System ready! Click "Sync All from Manager.io" to import customers.', 'info');
+    addLiveResult('System', true, '🚀 Ready! Click "Debug All Fields" to find your custom field IDs.', 'info');
     await loadData();
-    updateClientsTable();
-    updateClientChecklist();
-    updatePriorityClients();
-    updateStats();
-    updateCharts();
+    updateClientsTable(); updateClientChecklist(); updatePriorityClients(); updateStats(); updateCharts();
     setInterval(() => { loadData(); updateClientChecklist(); updateClientsTable(); updatePriorityClients(); }, 30000);
 }
 
