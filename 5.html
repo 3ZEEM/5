@@ -2,31 +2,58 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>Sync Customer to Firebase</title>
+    <title>Manager.io → Firebase Sync</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <style>
-        body { font-family: system-ui; padding: 20px; background: #f8fafc; direction: ltr; }
-        .container { max-width: 500px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        input, button { width: 100%; padding: 10px; margin: 8px 0; border: 1px solid #ddd; border-radius: 6px; }
-        button { background: #1d6fcf; color: white; cursor: pointer; font-weight: bold; }
-        .success { background: #dcfce7; color: #15803d; padding: 10px; border-radius: 6px; }
-        .error { background: #fee2e2; color: #b91c1c; padding: 10px; border-radius: 6px; }
+        * { box-sizing: border-box; }
+        body { font-family: 'Segoe UI', Arial; padding: 20px; background: #f0f2f5; }
+        .container { max-width: 1200px; margin: 0 auto; background: white; padding: 20px; border-radius: 12px; }
+        h2 { color: #2c5aa0; }
+        .toolbar { display: flex; gap: 10px; margin: 20px 0; flex-wrap: wrap; }
+        button { padding: 10px 20px; border: none; border-radius: 6px; cursor: pointer; }
+        .btn-primary { background: #2c5aa0; color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn-warning { background: #ffc107; }
+        .btn-danger { background: #dc3545; color: white; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; text-align: center; border-bottom: 1px solid #ddd; }
+        th { background: #2c5aa0; color: white; }
+        .synced { color: #28a745; font-weight: bold; }
+        .pending { color: #ff9800; font-weight: bold; }
+        .search-box { padding: 10px; width: 300px; margin-bottom: 15px; border: 1px solid #ddd; border-radius: 6px; }
+        .loading { text-align: center; padding: 40px; }
     </style>
 </head>
 <body>
 <div class="container">
-    <h2>📤 Sync Customer to Firebase</h2>
-    <input type="text" id="customerId" placeholder="Customer ID (from Manager.io)" value="e6481304-f2b8-482c-b7b2-01b191c64d9c">
-    <input type="text" id="customerName" placeholder="Customer Name" value="CLOUDE">
-    <input type="text" id="customerCode" placeholder="Customer Code" value="000">
-    <button onclick="fetchAndSync()">🔄 Fetch & Sync to Firebase</button>
-    <div id="result"></div>
+    <h2>📋 Manager.io → Firebase Sync</h2>
+    
+    <div class="toolbar">
+        <button class="btn-primary" onclick="fetchCustomers()">🔄 Refresh Customers</button>
+        <button class="btn-success" onclick="sendSelectedToFirebase()">📤 Send Selected to Firebase</button>
+        <button class="btn-warning" onclick="selectAll()">☑️ Select All</button>
+        <button class="btn-warning" onclick="deselectAll()">◻️ Deselect All</button>
+    </div>
+    
+    <div id="summary" style="background: #e9ecef; padding: 12px; border-radius: 8px; margin: 15px 0;"></div>
+    
+    <input type="text" class="search-box" id="searchInput" placeholder="🔍 Search by name or code..." onkeyup="filterTable()">
+    
+    <div id="customersTable"><div class="loading">🔄 Loading customers from Manager.io...</div></div>
 </div>
 
 <script>
-// Firebase config
-const firebaseConfig = {
+// ============================================
+// Manager.io API Configuration
+// ============================================
+const MANAGER_API_URL = "https://zatca.manager.io/api4/customers";
+const ACCESS_TOKEN = "CgswMDAtWkVFTSgyKRISCSqsnQEH+uRxEZSdUpYOHT0vGhIJKqydAdD78n8RnjQdt5cKnnk=";
+
+// ============================================
+// Firebase Configuration
+// ============================================
+const FIREBASE_CONFIG = {
     apiKey: "AIzaSyAEHL9LHEVf3alSIbomrUAiXR7bbaoB2hE",
     authDomain: "test-e6f8e.firebaseapp.com",
     projectId: "test-e6f8e",
@@ -34,95 +61,164 @@ const firebaseConfig = {
     messagingSenderId: "435354240397",
     appId: "1:435354240397:web:4a159450b23500491269c4"
 };
-firebase.initializeApp(firebaseConfig);
+
+firebase.initializeApp(FIREBASE_CONFIG);
 const db = firebase.firestore();
 
-// ============================================
-// postMessage wrapper (same as working index.html)
-// ============================================
-let MANAGER_ORIGIN = null;
-
-function postMessageWithResponse(message) {
-    return new Promise((resolve, reject) => {
-        const requestId = crypto.randomUUID();
-        const timer = setTimeout(() => {
-            window.removeEventListener('message', handler);
-            reject(new Error('Timeout — Manager.io did not respond'));
-        }, 15000);
-        
-        function handler(event) {
-            if (MANAGER_ORIGIN && event.origin !== MANAGER_ORIGIN) return;
-            if (event.source !== window.parent) return;
-            if (event.data?.type?.endsWith('-response') && event.data?.requestId === requestId) {
-                clearTimeout(timer);
-                window.removeEventListener('message', handler);
-                if (!MANAGER_ORIGIN && event.origin) MANAGER_ORIGIN = event.origin;
-                resolve(event.data.body);
-            }
-        }
-        
-        window.addEventListener('message', handler);
-        window.parent.postMessage({ ...message, requestId }, '*');
-    });
-}
+let allCustomers = [];
+let syncedCodes = [];
 
 // ============================================
-// Fetch customer data from Manager.io
+// Fetch customers from Manager.io API
 // ============================================
-async function fetchCustomerFromManager(customerId) {
-    const path = `/api4/customer/${customerId}`;
-    return await postMessageWithResponse({
-        type: 'api-request',
-        method: 'GET',
-        path: path
-    });
-}
-
-// ============================================
-// Main function
-// ============================================
-async function fetchAndSync() {
-    const resultDiv = document.getElementById('result');
-    const customerId = document.getElementById('customerId').value;
-    const manualName = document.getElementById('customerName').value;
-    const manualCode = document.getElementById('customerCode').value;
-    
-    resultDiv.innerHTML = '<div style="background:#fff3cd;padding:10px;border-radius:6px;">🔄 Fetching customer from Manager.io...</div>';
+async function fetchCustomers() {
+    const tableDiv = document.getElementById('customersTable');
+    tableDiv.innerHTML = '<div class="loading">🔄 Loading customers from Manager.io...</div>';
     
     try {
-        // Try to fetch from Manager.io API
-        let customerData = null;
-        try {
-            customerData = await fetchCustomerFromManager(customerId);
-        } catch(e) {
-            console.log("API fetch failed, using manual data", e);
-        }
-        
-        // Extract or use manual data
-        const name = customerData?.item?.name || manualName;
-        const code = customerData?.item?.code || manualCode;
-        const phone = customerData?.item?.customFields2?.strings?.["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || "";
-        
-        if (!name || !code) {
-            throw new Error("Customer name and code are required");
-        }
-        
-        // Send to Firebase
-        const docRef = await db.collection('clients').add({
-            name: name,
-            clientCode: code,
-            phone: phone,
-            customerId: customerId,
-            syncedAt: firebase.firestore.FieldValue.serverTimestamp(),
-            source: "manager-extension-postmessage"
+        const response = await fetch(MANAGER_API_URL, {
+            method: 'GET',
+            headers: {
+                'Authorization': `Bearer ${ACCESS_TOKEN}`,
+                'Content-Type': 'application/json'
+            }
         });
         
-        resultDiv.innerHTML = `<div class="success">✅ Synced successfully!<br>Name: ${name}<br>Code: ${code}<br>Firebase ID: ${docRef.id}</div>`;
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.items && data.items.length > 0) {
+            allCustomers = data.items.map(item => ({
+                id: item.item.id,
+                name: item.item.name,
+                code: item.item.code,
+                phone: item.item.customFields2?.strings?.["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || "",
+                inactive: item.item.inactive || false
+            }));
+            
+            await fetchSyncedClients();
+            renderTable();
+        } else {
+            tableDiv.innerHTML = '<div class="loading">❌ No customers found</div>';
+        }
         
     } catch (error) {
-        resultDiv.innerHTML = `<div class="error">❌ Failed: ${error.message}</div>`;
+        console.error("Error:", error);
+        tableDiv.innerHTML = `<div class="loading">❌ Failed: ${error.message}<br><br>Check token and endpoint</div>`;
     }
 }
+
+// ============================================
+// Fetch existing clients from Firebase
+// ============================================
+async function fetchSyncedClients() {
+    try {
+        const snapshot = await db.collection('clients').get();
+        syncedCodes = [];
+        snapshot.forEach(doc => {
+            const data = doc.data();
+            if (data.clientCode) syncedCodes.push(data.clientCode);
+        });
+    } catch (error) {
+        console.error("Firebase error:", error);
+    }
+}
+
+// ============================================
+// Render table
+// ============================================
+function renderTable() {
+    const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+    
+    const filtered = allCustomers.filter(c => 
+        c.name.toLowerCase().includes(searchTerm) || 
+        c.code.toLowerCase().includes(searchTerm)
+    );
+    
+    const syncedCount = filtered.filter(c => syncedCodes.includes(c.code)).length;
+    const pendingCount = filtered.length - syncedCount;
+    
+    document.getElementById('summary').innerHTML = `
+        📊 Total: ${filtered.length} | ✅ Synced: ${syncedCount} | ⏳ Pending: ${pendingCount}
+    `;
+    
+    let html = `<table><thead><tr><th><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th><th>#</th><th>Name</th><th>Code</th><th>Phone</th><th>Status</th></tr></thead><tbody>`;
+    
+    filtered.forEach((c, i) => {
+        const isSynced = syncedCodes.includes(c.code);
+        html += `<tr>
+            <td><input type="checkbox" class="customer-checkbox" value="${c.code}" data-name="${c.name}" data-code="${c.code}" data-phone="${c.phone}" ${isSynced ? 'disabled' : ''}></td>
+            <td>${i+1}</td>
+            <td>${c.name}</td>
+            <td>${c.code}</td>
+            <td>${c.phone || '—'}</td>
+            <td class="${isSynced ? 'synced' : 'pending'}">${isSynced ? '✅ Synced' : '⏳ Pending'}</td>
+        </tr>`;
+    });
+    
+    html += `</tbody></table>`;
+    document.getElementById('customersTable').innerHTML = html;
+}
+
+// ============================================
+// Send selected to Firebase
+// ============================================
+async function sendSelectedToFirebase() {
+    const checkboxes = document.querySelectorAll('.customer-checkbox:checked:not(:disabled)');
+    
+    if (checkboxes.length === 0) {
+        alert("⚠️ Select customers that haven't been synced");
+        return;
+    }
+    
+    if (!confirm(`Send ${checkboxes.length} customer(s) to Firebase?`)) return;
+    
+    let success = 0, fail = 0;
+    
+    for (const cb of checkboxes) {
+        try {
+            await db.collection('clients').add({
+                name: cb.getAttribute('data-name'),
+                clientCode: cb.getAttribute('data-code'),
+                phone: cb.getAttribute('data-phone'),
+                createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+                source: "manager-api-sync"
+            });
+            success++;
+            cb.disabled = true;
+            cb.checked = false;
+        } catch(e) {
+            fail++;
+        }
+    }
+    
+    alert(`✅ Done!\nAdded: ${success}\nFailed: ${fail}`);
+    await fetchSyncedClients();
+    renderTable();
+}
+
+// ============================================
+// Helpers
+// ============================================
+function selectAll() {
+    document.querySelectorAll('.customer-checkbox:not(:disabled)').forEach(cb => cb.checked = true);
+}
+function deselectAll() {
+    document.querySelectorAll('.customer-checkbox').forEach(cb => cb.checked = false);
+}
+function toggleSelectAll() {
+    const checked = document.getElementById('selectAllCheckbox').checked;
+    document.querySelectorAll('.customer-checkbox:not(:disabled)').forEach(cb => cb.checked = checked);
+}
+function filterTable() {
+    renderTable();
+}
+
+// Start
+fetchCustomers();
 </script>
 </body>
 </html>
