@@ -1,144 +1,116 @@
 <!DOCTYPE html>
-<html lang="en" dir="ltr">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Management System - Manager.io + Firebase</title>
+    <title>نظام إدارة العملاء</title>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/9.22.0/firebase-firestore-compat.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: #f0f2f5; padding: 20px; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; padding: 20px; direction: rtl; }
         .container { max-width: 1400px; margin: 0 auto; background: white; border-radius: 12px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); overflow: hidden; }
         .header { background: linear-gradient(135deg, #1d6fcf, #7c3aed); color: white; padding: 20px; text-align: center; }
         .nav-tabs { display: flex; background: #2d3748; gap: 2px; flex-wrap: wrap; }
-        .nav-tab { flex: 1; padding: 15px; text-align: center; color: white; background: #1e293b; border: none; cursor: pointer; font-weight: 600; min-width: 100px; }
+        .nav-tab { flex: 1; padding: 15px; text-align: center; color: white; background: #1e293b; border: none; cursor: pointer; font-weight: 600; }
         .nav-tab.active { background: #1d6fcf; }
         .tab-content { padding: 25px; min-height: 500px; }
         .tab-pane { display: none; }
         .tab-pane.active { display: block; }
-        
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px,1fr)); gap: 15px; margin-bottom: 25px; }
         .stat-card { background: #f8fafc; padding: 20px; border-radius: 10px; text-align: center; border-top: 3px solid #1d6fcf; }
         .stat-number { font-size: 28px; font-weight: bold; color: #1d6fcf; }
-        
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 10px; text-align: center; border-bottom: 1px solid #e2e8f0; font-size: 13px; }
-        th { background: #f1f5f9; position: sticky; top: 0; }
+        th { background: #f1f5f9; }
         .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; margin: 2px; }
         .btn-success { background: #16a34a; color: white; }
         .btn-danger { background: #dc2626; color: white; }
         .btn-primary { background: #1d6fcf; color: white; }
         .btn-warning { background: #f59e0b; color: white; }
-        .btn-sm { padding: 4px 8px; font-size: 11px; }
         .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 11px; }
         .status-active { background: #dcfce7; color: #15803d; }
         .status-expired { background: #fee2e2; color: #b91c1c; }
-        .status-no-endpoint { background: #fef3c7; color: #b45309; }
-        
         .live-results { background: #1e293b; color: #4ade80; padding: 15px; border-radius: 8px; font-family: monospace; height: 300px; overflow-y: auto; font-size: 12px; }
         .log-entry { margin: 5px 0; padding: 5px; border-left: 3px solid; }
         .log-success { border-color: #16a34a; }
         .log-error { border-color: #dc2626; }
         .log-info { border-color: #1d6fcf; }
-        .log-warning { border-color: #f59e0b; }
-        
         .client-selection { max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin: 15px 0; }
         .client-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #e2e8f0; }
-        
         .filter-panel { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 10px; align-items: flex-end; }
         .filter-group { display: flex; flex-direction: column; gap: 5px; }
         .filter-group label { font-size: 11px; font-weight: 600; color: #64748b; }
         .filter-group input, .filter-group select { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
-        
         .chart-container { background: white; padding: 15px; border-radius: 10px; margin: 20px 0; height: 300px; }
         .table-container { overflow-x: auto; max-height: 500px; overflow-y: auto; }
         .sync-btn { background: #10b981; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
-        .sync-btn:hover { background: #059669; }
         .bulk-actions { display: flex; gap: 10px; margin: 15px 0; flex-wrap: wrap; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
-        <h1>🚀 Customer Management System</h1>
-        <p>Sync customers from Manager.io | Send Placement | Advanced Reports</p>
+        <h1>🚀 نظام إدارة العملاء</h1>
+        <p>مزامنة من Manager.io | إرسال Placement | تقارير متقدمة</p>
     </div>
     
     <div class="nav-tabs">
-        <button class="nav-tab active" onclick="showTab('dashboard')">📊 Dashboard</button>
-        <button class="nav-tab" onclick="showTab('clients')">👥 Customers</button>
-        <button class="nav-tab" onclick="showTab('send')">📤 Send Requests</button>
-        <button class="nav-tab" onclick="showTab('reports')">📈 Reports</button>
+        <button class="nav-tab active" onclick="showTab('dashboard')">📊 لوحة التحكم</button>
+        <button class="nav-tab" onclick="showTab('clients')">👥 العملاء</button>
+        <button class="nav-tab" onclick="showTab('send')">📤 إرسال</button>
+        <button class="nav-tab" onclick="showTab('reports')">📈 التقارير</button>
     </div>
     
     <div class="tab-content">
         <div id="dashboard" class="tab-pane active">
             <div class="stats-grid" id="statsGrid"></div>
             <div class="chart-container"><canvas id="requestsChart"></canvas></div>
-            <h3>📋 Priority Clients (Expiring Soon)</h3>
+            <h3>📋 العملاء المنتهية اشتراكهم قريباً</h3>
             <div id="priorityClients"></div>
         </div>
         
         <div id="clients" class="tab-pane">
-            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
-                <h2>👥 Customers</h2>
-                <button class="sync-btn" onclick="fetchAndSyncAllCustomers()">🔄 Sync All from Manager.io</button>
-                <button class="btn btn-warning btn-sm" onclick="debugAllFields()">🔍 Debug</button>
+            <div style="display: flex; justify-content: space-between; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
+                <h2>👥 العملاء</h2>
+                <button class="sync-btn" onclick="fetchAndSyncAllCustomers()">🔄 مزامنة الكل</button>
             </div>
-            
             <div class="bulk-actions">
-                <button class="btn btn-primary btn-sm" onclick="selectAllClients()">☑️ Select All</button>
-                <button class="btn btn-warning btn-sm" onclick="deselectAllClients()">◻️ Deselect All</button>
-                <button class="btn btn-success btn-sm" onclick="updateSelectedClients()">🔄 Update Selected</button>
-                <button class="btn btn-danger btn-sm" onclick="deleteSelectedClients()">🗑️ Delete Selected</button>
+                <button class="btn btn-primary btn-sm" onclick="selectAllClients()">☑️ تحديد الكل</button>
+                <button class="btn btn-warning btn-sm" onclick="deselectAllClients()">◻️ إلغاء الكل</button>
+                <button class="btn btn-danger btn-sm" onclick="deleteSelectedClients()">🗑️ حذف المحددين</button>
             </div>
-            
             <div class="filter-panel">
-                <div class="filter-group"><label>🔍 Search</label><input type="text" id="searchInput" placeholder="Name or code..." onkeyup="filterClients()"></div>
-                <div class="filter-group"><label>📅 Status</label><select id="statusFilter" onchange="filterClients()"><option value="all">All</option><option value="active">Active</option><option value="expired">Expired</option></select></div>
-                <div class="filter-group"><label>🔑 Has Endpoint</label><select id="endpointFilter" onchange="filterClients()"><option value="all">All</option><option value="yes">Yes</option><option value="no">No</option></select></div>
-                <button class="btn btn-primary btn-sm" onclick="filterClients()">Apply</button>
+                <div class="filter-group"><label>🔍 بحث</label><input type="text" id="searchInput" placeholder="اسم أو كود..." onkeyup="filterClients()"></div>
+                <div class="filter-group"><label>📅 الحالة</label><select id="statusFilter" onchange="filterClients()"><option value="all">الكل</option><option value="active">نشط</option><option value="expired">منتهي</option></select></div>
+                <button class="btn btn-primary btn-sm" onclick="filterClients()">تطبيق</button>
             </div>
-            
             <div class="table-container">
-                <table id="clientsTable" style="width: 100%; min-width: 700px;">
-                    <thead>
-                        <tr>
-                            <th><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th>
-                            <th>Name</th>
-                            <th>Code</th>
-                            <th>Phone</th>
-                            <th>Expiry Date</th>
-                            <th>System</th>
-                            <th>Endpoint</th>
-                            <th>Status</th>
-                            <th>Actions</th>
-                        </tr>
-                    </thead>
+                <table id="clientsTable">
+                    <thead><tr><th><input type="checkbox" id="selectAllCheckbox" onchange="toggleSelectAll()"></th><th>الاسم</th><th>الكود</th><th>الجوال</th><th>تاريخ الانتهاء</th><th>Endpoint</th><th>الحالة</th><th>إجراءات</th></tr></thead>
                     <tbody id="clientsTableBody"></tbody>
                 </table>
             </div>
         </div>
         
         <div id="send" class="tab-pane">
-            <h2>📤 Send Placement Requests</h2>
+            <h2>📤 إرسال طلبات Placement</h2>
             <div class="filter-panel">
-                <div class="filter-group"><label>⏱️ Interval (seconds)</label><input type="number" id="intervalInput" value="5" min="1" max="60"></div>
-                <div class="filter-group"><label>🔄 Success attempts</label><input type="number" id="attemptsInput" value="1" min="1" max="10"></div>
-                <button class="btn btn-primary" onclick="updateSettings()">💾 Save</button>
-                <button class="btn btn-success" onclick="startAllSending()">▶️ Start All</button>
-                <button class="btn btn-danger" onclick="stopAllSending()">⏹️ Stop All</button>
+                <div class="filter-group"><label>⏱️ الفاصل (ثواني)</label><input type="number" id="intervalInput" value="5" min="1" max="60"></div>
+                <div class="filter-group"><label>🔄 عدد المحاولات</label><input type="number" id="attemptsInput" value="1" min="1" max="10"></div>
+                <button class="btn btn-primary" onclick="updateSettings()">💾 حفظ</button>
+                <button class="btn btn-success" onclick="startAllSending()">▶️ إرسال الكل</button>
+                <button class="btn btn-danger" onclick="stopAllSending()">⏹️ إيقاف الكل</button>
             </div>
-            <h3>📋 Select Customers to Send</h3>
+            <h3>📋 اختيار العملاء</h3>
             <div class="client-selection" id="clientChecklist"></div>
-            <h3>📡 Live Results</h3>
-            <div class="live-results" id="liveResults"><div class="log-entry log-info">System ready. Click "Sync All" first to import customers.</div></div>
+            <h3>📡 النتائج المباشرة</h3>
+            <div class="live-results" id="liveResults"><div class="log-entry log-info">النظام جاهز. اضغط مزامنة أولاً.</div></div>
         </div>
         
         <div id="reports" class="tab-pane">
-            <h2>📈 Performance Reports</h2>
+            <h2>📈 التقارير</h2>
             <div class="chart-container"><canvas id="performanceChart"></canvas></div>
         </div>
     </div>
@@ -146,7 +118,7 @@
 
 <script>
 // ============================================
-// Firebase Configuration (Test Project)
+// إعدادات Firebase
 // ============================================
 const firebaseConfig = {
     apiKey: "AIzaSyAEHL9LHEVf3alSIbomrUAiXR7bbaoB2hE",
@@ -161,19 +133,17 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // ============================================
-// API KEY (Working)
+// المفتاح الذي يعمل - مهم جداً
 // ============================================
 const API_KEY = "CgswMDAtWkVFTSgyKRISCZiwnQGhtAd9Eam1637BvcG8GhIJmLCdAXS2NHwRmkQSMfo71Jk=";
 
 // ============================================
-// PLACEMENT IDs (Single ID only)
+// Placement ID واحد فقط
 // ============================================
-const PLACEMENT_IDS = [
-    "00082353-9fca-4ab4-91ae-20505479cbda"
-];
+const PLACEMENT_IDS = ["00082353-9fca-4ab4-91ae-20505479cbda"];
 
 // ============================================
-// Global Variables
+// المتغيرات العامة
 // ============================================
 let clients = [];
 let requests = [];
@@ -184,13 +154,12 @@ let charts = {};
 let MANAGER_ORIGIN = null;
 
 // ============================================
-// postMessage (to fetch customers from Manager.io)
+// postMessage لجلب العملاء
 // ============================================
 function postMessageWithResponse(message) {
     return new Promise((resolve, reject) => {
         const requestId = crypto.randomUUID();
         const timer = setTimeout(() => reject(new Error('Timeout')), 15000);
-        
         function handler(event) {
             if (MANAGER_ORIGIN && event.origin !== MANAGER_ORIGIN) return;
             if (event.source !== window.parent) return;
@@ -207,7 +176,7 @@ function postMessageWithResponse(message) {
 }
 
 // ============================================
-// Send Request to Manager.io (Working)
+// دالة الإرسال - التي نجحت في الاختبار
 // ============================================
 async function sendRequestToManager(client) {
     const endpoint = "https://zatca.manager.io/api2/classic-custom-field-form";
@@ -215,7 +184,7 @@ async function sendRequestToManager(client) {
     const payload = {
         Name: 'EXP2025',
         Placement: PLACEMENT_IDS,
-        Description: '<div>Auto placement from management system</div>',
+        Description: '<div>إرسال من نظام الإدارة</div>',
         Inactive: false
     };
     
@@ -230,22 +199,19 @@ async function sendRequestToManager(client) {
         });
         
         if (response.status === 201 || response.status === 200) {
-            const result = await response.json();
-            return { success: true, data: result };
+            return { success: true, data: await response.json() };
         }
         return { success: false, error: `HTTP ${response.status}` };
-        
     } catch (error) {
         return { success: false, error: error.message };
     }
 }
 
 // ============================================
-// Fetch and Sync Customers from Manager.io
+// مزامنة العملاء من Manager.io
 // ============================================
 async function fetchAndSyncAllCustomers() {
-    addLiveResult('System', true, '🔄 Fetching customers from Manager.io...', 'info');
-    
+    addLiveResult('النظام', true, '🔄 جلب العملاء...', 'info');
     try {
         const data = await postMessageWithResponse({
             type: 'api-request',
@@ -254,32 +220,25 @@ async function fetchAndSyncAllCustomers() {
         });
         
         const customers = data.items || [];
-        addLiveResult('System', true, `📦 Found ${customers.length} customers`, 'info');
-        
-        let added = 0, updated = 0, skipped = 0;
+        let added = 0, updated = 0;
         
         for (const c of customers) {
             const cust = c.item;
             const strings = cust.customFields2?.strings || {};
             const endpoint = strings["bf1e38b7-6918-4d72-ac9a-8ded57579e60"] || '';
-            
-            if (!endpoint) { skipped++; continue; }
+            if (!endpoint) continue;
             
             const clientData = {
-                name: cust.name || 'Unknown',
+                name: cust.name || 'غير معروف',
                 clientCode: cust.code || '',
                 phone: strings["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || '',
                 endpoint: endpoint,
                 apiKey: strings["0ad25800-6570-4443-92dd-aa1361ec81da"] || '',
-                responsible: strings["fb3f3369-5b1f-4948-a787-0939c03316f4"] || '',
-                systemType: (cust.customFields2?.stringArrays?.["a48bbb59-e988-4504-9073-eefa4b9945c8"] || ['Cloud'])[0],
-                subscriptionDate: cust.customFields2?.dates?.["8c30f931-72cf-4f10-a952-778f4112158a"] || '',
                 expiryDate: cust.customFields2?.dates?.["877c8553-9242-49b9-81e4-c91d969a53b9"] || '',
                 lastSync: firebase.firestore.FieldValue.serverTimestamp()
             };
             
             const existing = await db.collection('clients').where('clientCode', '==', clientData.clientCode).get();
-            
             if (existing.empty) {
                 await db.collection('clients').add(clientData);
                 added++;
@@ -289,19 +248,18 @@ async function fetchAndSyncAllCustomers() {
             }
         }
         
-        addLiveResult('System', true, `✅ Sync: ${added} added, ${updated} updated, ${skipped} skipped`, 'success');
+        addLiveResult('النظام', true, `✅ تم: ${added} مضاف, ${updated} محدث`, 'success');
         await loadData();
         updateClientsTable();
         updateClientChecklist();
         updateStats();
-        
     } catch (error) {
-        addLiveResult('System', false, `❌ Sync failed: ${error.message}`, 'error');
+        addLiveResult('النظام', false, `❌ فشل: ${error.message}`, 'error');
     }
 }
 
 // ============================================
-// Load data from Firebase
+// تحميل البيانات من Firebase
 // ============================================
 async function loadData() {
     try {
@@ -315,16 +273,16 @@ async function loadData() {
         
         updateStats();
         updateCharts();
-    } catch (error) { console.error(error); }
+    } catch(e) { console.error(e); }
 }
 
 // ============================================
-// Start sending for a client
+// بدء الإرسال لعميل
 // ============================================
 async function startSendingForClient(clientId) {
     const client = clients.find(c => c.id === clientId);
     if (!client || !client.endpoint) {
-        addLiveResult(client?.name || 'Unknown', false, '❌ No endpoint configured', 'error');
+        addLiveResult(client?.name || 'غير معروف', false, '❌ لا يوجد Endpoint', 'error');
         return;
     }
     
@@ -334,37 +292,32 @@ async function startSendingForClient(clientId) {
     
     sending.intervalId = setInterval(async () => {
         if (!sending.active) return;
-        
         const result = await sendRequestToManager(client);
         
         if (result.success) {
             sending.consecutiveSuccess++;
-            addLiveResult(client.name, true, `✅ Sent (${sending.consecutiveSuccess}/${successAttempts})`);
-            
+            addLiveResult(client.name, true, `✅ تم الإرسال (${sending.consecutiveSuccess}/${successAttempts})`);
             await db.collection('requests').add({
                 clientId: client.id, clientName: client.name, clientCode: client.clientCode,
                 status: 'success', timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
-            
             if (sending.consecutiveSuccess >= successAttempts) {
-                addLiveResult(client.name, true, `🎯 Completed - stopping`);
+                addLiveResult(client.name, true, `🎯 اكتمل - إيقاف`);
                 stopSendingForClient(clientId);
             }
         } else {
             sending.consecutiveSuccess = 0;
-            addLiveResult(client.name, false, `❌ Failed: ${result.error}`);
-            
+            addLiveResult(client.name, false, `❌ فشل: ${result.error}`);
             await db.collection('requests').add({
                 clientId: client.id, clientName: client.name, clientCode: client.clientCode,
                 status: 'error', error: result.error, timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
         }
-        
         updateStats(); updateCharts();
     }, sendingInterval);
     
     activeSending.set(clientId, sending);
-    addLiveResult(client.name, true, '▶️ Started sending', 'info');
+    addLiveResult(client.name, true, '▶️ بدء الإرسال', 'info');
     updateClientChecklist(); updateClientsTable();
 }
 
@@ -374,7 +327,7 @@ function stopSendingForClient(clientId) {
         sending.active = false;
         clearInterval(sending.intervalId);
         activeSending.delete(clientId);
-        addLiveResult(sending.clientName, false, '⏹️ Stopped', 'warning');
+        addLiveResult(sending.clientName, false, '⏹️ إيقاف', 'warning');
     }
     updateClientChecklist(); updateClientsTable();
 }
@@ -388,31 +341,29 @@ function stopAllSending() {
 }
 
 // ============================================
-// UI Updates
+// تحديث الواجهة
 // ============================================
 function updateStats() {
     const successCount = requests.filter(r => r.status === 'success').length;
     const failCount = requests.filter(r => r.status === 'error').length;
     document.getElementById('statsGrid').innerHTML = `
-        <div class="stat-card"><div class="stat-number">${clients.length}</div><div>Total Customers</div></div>
-        <div class="stat-card"><div class="stat-number">${clients.filter(c=>c.endpoint).length}</div><div>Have Endpoint</div></div>
-        <div class="stat-card"><div class="stat-number">${successCount}</div><div>Successful</div></div>
-        <div class="stat-card"><div class="stat-number">${failCount}</div><div>Failed</div></div>
-        <div class="stat-card"><div class="stat-number">${activeSending.size}</div><div>Active Sending</div></div>
+        <div class="stat-card"><div class="stat-number">${clients.length}</div><div>إجمالي العملاء</div></div>
+        <div class="stat-card"><div class="stat-number">${clients.filter(c=>c.endpoint).length}</div><div>لديهم Endpoint</div></div>
+        <div class="stat-card"><div class="stat-number">${successCount}</div><div>طلبات ناجحة</div></div>
+        <div class="stat-card"><div class="stat-number">${failCount}</div><div>طلبات فاشلة</div></div>
+        <div class="stat-card"><div class="stat-number">${activeSending.size}</div><div>قيد الإرسال</div></div>
     `;
 }
 
 function updateClientsTable() {
     const search = document.getElementById('searchInput')?.value.toLowerCase() || '';
     const statusFilter = document.getElementById('statusFilter')?.value || 'all';
-    const endpointFilter = document.getElementById('endpointFilter')?.value || 'all';
     
     let filtered = clients.filter(c => {
         const matchSearch = (c.name?.toLowerCase().includes(search) || c.clientCode?.toLowerCase().includes(search));
         const isActive = !c.expiryDate || new Date(c.expiryDate) > new Date();
         const matchStatus = statusFilter === 'all' || (statusFilter === 'active' ? isActive : !isActive);
-        const matchEndpoint = endpointFilter === 'all' || (endpointFilter === 'yes' ? c.endpoint : !c.endpoint);
-        return matchSearch && matchStatus && matchEndpoint;
+        return matchSearch && matchStatus;
     });
     
     const tbody = document.getElementById('clientsTableBody');
@@ -421,16 +372,15 @@ function updateClientsTable() {
     tbody.innerHTML = filtered.map(c => `
         <tr>
             <td><input type="checkbox" class="client-checkbox" value="${c.id}"></td>
-            <td><strong>${escapeHtml(c.name)}</strong><br><small>${escapeHtml(c.responsible)}</small></td>
+            <td><strong>${escapeHtml(c.name)}</strong></td>
             <td>${escapeHtml(c.clientCode)}</td>
             <td>${escapeHtml(c.phone)}</td>
             <td>${c.expiryDate || '—'}</td>
-            <td>${escapeHtml(c.systemType) || 'Cloud'}</td>
-            <td><span class="status-badge ${c.endpoint ? 'status-active' : 'status-no-endpoint'}">${c.endpoint ? '✅' : '❌'}</span></td>
-            <td><span class="status-badge ${(!c.expiryDate || new Date(c.expiryDate) > new Date()) ? 'status-active' : 'status-expired'}">${(!c.expiryDate || new Date(c.expiryDate) > new Date()) ? 'Active' : 'Expired'}</span></td>
+            <td><span class="status-badge ${c.endpoint ? 'status-active' : 'status-expired'}">${c.endpoint ? '✅' : '❌'}</span></td>
+            <td><span class="status-badge ${(!c.expiryDate || new Date(c.expiryDate) > new Date()) ? 'status-active' : 'status-expired'}">${(!c.expiryDate || new Date(c.expiryDate) > new Date()) ? 'نشط' : 'منتهي'}</span></td>
             <td>${activeSending.has(c.id) ? 
-                `<button class="btn btn-danger btn-sm" onclick="stopSendingForClient('${c.id}')">⏹️ Stop</button>` :
-                `<button class="btn btn-success btn-sm" onclick="startSendingForClient('${c.id}')" ${!c.endpoint ? 'disabled' : ''}>▶️ Send</button>`
+                `<button class="btn btn-danger btn-sm" onclick="stopSendingForClient('${c.id}')">⏹️ إيقاف</button>` :
+                `<button class="btn btn-success btn-sm" onclick="startSendingForClient('${c.id}')" ${!c.endpoint ? 'disabled' : ''}>▶️ إرسال</button>`
             }</td>
         </tr>
     `).join('');
@@ -439,12 +389,11 @@ function updateClientsTable() {
 function updateClientChecklist() {
     const container = document.getElementById('clientChecklist');
     if (!container) return;
-    
     const validClients = clients.filter(c => c.endpoint);
     container.innerHTML = validClients.map(c => `
         <div class="client-item">
-            <input type="checkbox" id="check_${c.id}" value="${c.id}" ${activeSending.has(c.id) ? 'checked' : ''}>
-            <label for="check_${c.id}"><strong>${escapeHtml(c.name)}</strong> (${escapeHtml(c.clientCode)}) - Expires: ${c.expiryDate || 'N/A'}</label>
+            <input type="checkbox" id="check_${c.id}" value="${c.id}">
+            <label for="check_${c.id}"><strong>${escapeHtml(c.name)}</strong> (${escapeHtml(c.clientCode)})</label>
         </div>
     `).join('');
 }
@@ -452,9 +401,8 @@ function updateClientChecklist() {
 function updatePriorityClients() {
     const container = document.getElementById('priorityClients');
     if (!container) return;
-    
-    const expiring = clients.filter(c => c.expiryDate && new Date(c.expiryDate) > new Date() && new Date(c.expiryDate) - new Date() < 7*24*60*60*1000 && c.endpoint).slice(0,5);
-    container.innerHTML = expiring.map(c => `<div class="client-item"><strong>${escapeHtml(c.name)}</strong> - Expires: ${c.expiryDate}<button class="btn btn-primary btn-sm" onclick="startSendingForClient('${c.id}')">Send</button></div>`).join('') || '<div>No clients expiring soon</div>';
+    const expiring = clients.filter(c => c.expiryDate && new Date(c.expiryDate) > new Date() && new Date(c.expiryDate) - new Date() < 7*24*60*60*1000).slice(0,5);
+    container.innerHTML = expiring.map(c => `<div class="client-item"><strong>${escapeHtml(c.name)}</strong> - ينتهي: ${c.expiryDate}</div>`).join('') || '<div>لا يوجد عملاء</div>';
 }
 
 function filterClients() { updateClientsTable(); }
@@ -462,28 +410,20 @@ function selectAllClients() { document.querySelectorAll('.client-checkbox').forE
 function deselectAllClients() { document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = false); }
 function toggleSelectAll() { document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = document.getElementById('selectAllCheckbox')?.checked); }
 
-async function updateSelectedClients() { 
-    addLiveResult('System', true, '🔄 Updating selected customers...', 'info'); 
-    await fetchAndSyncAllCustomers(); 
-}
-
-async function deleteSelectedClients() { 
+async function deleteSelectedClients() {
     const checkboxes = document.querySelectorAll('.client-checkbox:checked');
     if (checkboxes.length === 0) return;
-    if (!confirm(`Delete ${checkboxes.length} customer(s)?`)) return;
-    for (const cb of checkboxes) { 
-        try { await db.collection('clients').doc(cb.value).delete(); } catch(e) {} 
+    if (!confirm(`حذف ${checkboxes.length} عميل؟`)) return;
+    for (const cb of checkboxes) {
+        try { await db.collection('clients').doc(cb.value).delete(); } catch(e) {}
     }
-    addLiveResult('System', true, `✅ Deleted ${checkboxes.length} customer(s)`, 'success');
+    addLiveResult('النظام', true, `✅ تم حذف ${checkboxes.length} عميل`, 'success');
     await loadData();
     updateClientsTable();
     updateClientChecklist();
 }
 
-function escapeHtml(str) { 
-    if (!str) return ''; 
-    return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); 
-}
+function escapeHtml(str) { if (!str) return ''; return str.replace(/[&<>]/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;'})[m]); }
 
 function addLiveResult(client, success, message, type = null) {
     const container = document.getElementById('liveResults');
@@ -502,7 +442,7 @@ function updateSettings() {
     const attempts = parseInt(document.getElementById('attemptsInput')?.value);
     if (interval >= 1 && interval <= 60) sendingInterval = interval * 1000;
     if (attempts >= 1 && attempts <= 10) successAttempts = attempts;
-    addLiveResult('System', true, `⚙️ Settings: interval=${sendingInterval/1000}s, attempts=${successAttempts}`, 'info');
+    addLiveResult('النظام', true, `⚙️ الفاصل: ${sendingInterval/1000}ث، المحاولات: ${successAttempts}`, 'info');
 }
 
 function updateCharts() {
@@ -511,10 +451,10 @@ function updateCharts() {
     requests.forEach(r => { const date = r.timestamp?.toDate?.() || new Date(r.timestamp); const key = date.toLocaleDateString(); if (last7Days[key]) { if (r.status === 'success') last7Days[key].success++; else last7Days[key].error++; } });
     
     const ctx1 = document.getElementById('requestsChart')?.getContext('2d');
-    if (ctx1) { if (charts.requests) charts.requests.destroy(); charts.requests = new Chart(ctx1, { type: 'line', data: { labels: Object.keys(last7Days), datasets: [{ label: 'Successful', data: Object.values(last7Days).map(d => d.success), borderColor: '#16a34a', fill: false }, { label: 'Failed', data: Object.values(last7Days).map(d => d.error), borderColor: '#dc2626', fill: false }] }, options: { responsive: true } }); }
+    if (ctx1) { if (charts.requests) charts.requests.destroy(); charts.requests = new Chart(ctx1, { type: 'line', data: { labels: Object.keys(last7Days), datasets: [{ label: 'ناجحة', data: Object.values(last7Days).map(d => d.success), borderColor: '#16a34a', fill: false }, { label: 'فاشلة', data: Object.values(last7Days).map(d => d.error), borderColor: '#dc2626', fill: false }] }, options: { responsive: true } }); }
     
     const ctx2 = document.getElementById('performanceChart')?.getContext('2d');
-    if (ctx2) { if (charts.performance) charts.performance.destroy(); const s = requests.filter(r => r.status === 'success').length, f = requests.filter(r => r.status === 'error').length; charts.performance = new Chart(ctx2, { type: 'doughnut', data: { labels: ['Successful', 'Failed'], datasets: [{ data: [s, f], backgroundColor: ['#16a34a', '#dc2626'] }] } }); }
+    if (ctx2) { if (charts.performance) charts.performance.destroy(); const s = requests.filter(r => r.status === 'success').length, f = requests.filter(r => r.status === 'error').length; charts.performance = new Chart(ctx2, { type: 'doughnut', data: { labels: ['ناجحة', 'فاشلة'], datasets: [{ data: [s, f], backgroundColor: ['#16a34a', '#dc2626'] }] } }); }
 }
 
 function showTab(tabName) {
@@ -526,23 +466,11 @@ function showTab(tabName) {
     if (tabName === 'clients') updateClientsTable();
 }
 
-async function debugAllFields() {
-    addLiveResult('Debug', true, '🔍 Fetching debug info...', 'info');
-    try {
-        const data = await postMessageWithResponse({ type: 'api-request', method: 'GET', path: '/api4/customer-batch?PageSize=1' });
-        if (data.items?.length > 0) {
-            const cust = data.items[0].item;
-            addLiveResult('Debug', true, `📋 Customer: ${cust.name}`, 'success');
-            addLiveResult('Debug', true, `📋 CustomFields2: ${JSON.stringify(cust.customFields2, null, 2)}`, 'info');
-        }
-    } catch(e) { addLiveResult('Debug', false, `Error: ${e.message}`, 'error'); }
-}
-
 async function init() {
-    addLiveResult('System', true, '🚀 System ready! Click "Sync All" to import customers.', 'info');
+    addLiveResult('النظام', true, '🚀 النظام جاهز! اضغط مزامنة الكل', 'info');
     await loadData();
     updateClientsTable(); updateClientChecklist(); updatePriorityClients(); updateStats(); updateCharts();
-    setInterval(() => { loadData(); updateClientChecklist(); updateClientsTable(); updatePriorityClients(); }, 30000);
+    setInterval(() => { loadData(); updateClientChecklist(); updateClientsTable(); }, 30000);
 }
 
 init();
