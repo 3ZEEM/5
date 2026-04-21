@@ -500,10 +500,8 @@ async function deleteSelectedClients() {
 // ============================================
 async function sendRequestToManager(client) {
     if (!client.endpoint) return { success: false, error: 'No endpoint' };
-    if (!client.apiKey) return { success: false, error: 'No API key' };
     
     try {
-        // استخراج المسار من endpoint
         let path = client.endpoint;
         if (path.startsWith('http')) {
             const url = new URL(path);
@@ -511,14 +509,14 @@ async function sendRequestToManager(client) {
         }
         if (!path.startsWith('/')) path = '/' + path;
         
-        // 🔥 استخدام postMessage (نفس طريقة جلب العملاء)
+        // 🔥 إزالة X-API-KEY من الهيدر (زي 14.html)
         const result = await postMessageWithResponse({
             type: 'api-request',
             method: 'POST',
             path: path,
             headers: {
-                'Content-Type': 'application/json',
-                'X-API-KEY': client.apiKey
+                'Content-Type': 'application/json'
+                // لا ترسل X-API-KEY
             },
             body: JSON.stringify({
                 Name: 'EXP2025',
@@ -541,7 +539,6 @@ async function sendRequestToManager(client) {
         return { success: true, data: result };
         
     } catch (error) {
-        addLiveResult(client.name, false, `❌ Send error: ${error.message}`, 'error');
         return { success: false, error: error.message };
     }
 }// ============================================
