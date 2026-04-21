@@ -26,35 +26,41 @@
         table { width: 100%; border-collapse: collapse; }
         th, td { padding: 10px; text-align: left; border-bottom: 1px solid #e2e8f0; }
         th { background: #f1f5f9; }
-        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; }
+        .btn { padding: 6px 12px; border: none; border-radius: 6px; cursor: pointer; font-size: 12px; }
         .btn-success { background: #16a34a; color: white; }
         .btn-danger { background: #dc2626; color: white; }
         .btn-primary { background: #1d6fcf; color: white; }
+        .btn-sm { padding: 4px 8px; font-size: 11px; }
         .status-badge { padding: 4px 8px; border-radius: 20px; font-size: 12px; }
         .status-active { background: #dcfce7; color: #15803d; }
         .status-expired { background: #fee2e2; color: #b91c1c; }
         
-        .live-results { background: #1e293b; color: #4ade80; padding: 15px; border-radius: 8px; font-family: monospace; height: 300px; overflow-y: auto; }
+        .live-results { background: #1e293b; color: #4ade80; padding: 15px; border-radius: 8px; font-family: monospace; height: 300px; overflow-y: auto; font-size: 12px; }
         .log-entry { margin: 5px 0; padding: 5px; border-left: 3px solid; }
         .log-success { border-color: #16a34a; }
         .log-error { border-color: #dc2626; }
         .log-info { border-color: #1d6fcf; }
+        .log-warning { border-color: #f59e0b; }
         
         .client-selection { max-height: 300px; overflow-y: auto; border: 1px solid #e2e8f0; border-radius: 8px; padding: 10px; margin: 15px 0; }
         .client-item { display: flex; align-items: center; gap: 10px; padding: 8px; border-bottom: 1px solid #e2e8f0; }
         
-        .filter-panel { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 10px; }
+        .filter-panel { display: flex; gap: 15px; flex-wrap: wrap; margin-bottom: 20px; padding: 15px; background: #f8fafc; border-radius: 10px; align-items: flex-end; }
         .filter-group { display: flex; flex-direction: column; gap: 5px; }
+        .filter-group label { font-size: 11px; font-weight: 600; color: #64748b; }
         .filter-group input, .filter-group select { padding: 6px 10px; border: 1px solid #cbd5e1; border-radius: 6px; }
         
         .chart-container { background: white; padding: 15px; border-radius: 10px; margin: 20px 0; height: 300px; }
+        .table-container { overflow-x: auto; max-height: 500px; overflow-y: auto; }
+        .sync-btn { background: #10b981; color: white; padding: 8px 16px; border: none; border-radius: 6px; cursor: pointer; font-weight: bold; }
+        .sync-btn:hover { background: #059669; }
     </style>
 </head>
 <body>
 <div class="container">
     <div class="header">
         <h1>🚀 Manager.io → Firebase Full System</h1>
-        <p>Manage clients, send requests, and track performance</p>
+        <p>Sync customers, manage API keys, send placement requests</p>
     </div>
     
     <div class="nav-tabs">
@@ -71,23 +77,24 @@
             <div class="chart-container">
                 <canvas id="requestsChart"></canvas>
             </div>
-            <h3>📋 Priority Clients</h3>
+            <h3>📋 Priority Clients (Expiring Soon)</h3>
             <div id="priorityClients"></div>
         </div>
         
         <!-- Clients -->
         <div id="clients" class="tab-pane">
-            <div style="display: flex; justify-content: space-between; margin-bottom: 15px;">
+            <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; flex-wrap: wrap; gap: 10px;">
                 <h2>👥 Clients</h2>
-                <button class="btn btn-primary" onclick="fetchAndSyncAllCustomers()">🔄 Sync All from Manager.io</button>
+                <button class="sync-btn" onclick="fetchAndSyncAllCustomers()">🔄 Sync All from Manager.io</button>
             </div>
             <div class="filter-panel">
                 <div class="filter-group"><label>🔍 Search</label><input type="text" id="searchInput" placeholder="Name or code..." onkeyup="filterClients()"></div>
                 <div class="filter-group"><label>📅 Status</label><select id="statusFilter" onchange="filterClients()"><option value="all">All</option><option value="active">Active</option><option value="expired">Expired</option></select></div>
+                <button class="btn btn-primary btn-sm" onclick="filterClients()">Apply</button>
             </div>
-            <div class="table-container" style="overflow-x: auto;">
-                <table id="clientsTable">
-                    <thead><tr><th><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th><th>Name</th><th>Code</th><th>Phone</th><th>Expiry</th><th>Status</th><th>Actions</th></tr></thead>
+            <div class="table-container">
+                <table id="clientsTable" style="width: 100%; min-width: 600px;">
+                    <thead><tr><th style="width:30px"><input type="checkbox" id="selectAll" onchange="toggleSelectAll()"></th><th>Name</th><th>Code</th><th>Phone</th><th>Expiry</th><th>Status</th><th style="width:120px">Actions</th></tr></thead>
                     <tbody id="clientsTableBody"></tbody>
                 </table>
             </div>
@@ -95,7 +102,7 @@
         
         <!-- Send -->
         <div id="send" class="tab-pane">
-            <h2>📤 Send Requests</h2>
+            <h2>📤 Send Placement Requests</h2>
             <div class="filter-panel">
                 <div class="filter-group"><label>⏱️ Interval (seconds)</label><input type="number" id="intervalInput" value="5" min="1" max="60"></div>
                 <div class="filter-group"><label>🔄 Success attempts</label><input type="number" id="attemptsInput" value="1" min="1" max="10"></div>
@@ -103,14 +110,15 @@
                 <button class="btn btn-success" onclick="startAllSending()">▶️ Start All</button>
                 <button class="btn btn-danger" onclick="stopAllSending()">⏹️ Stop All</button>
             </div>
+            <h3>📋 Select Clients to Send</h3>
             <div class="client-selection" id="clientChecklist"></div>
             <h3>📡 Live Results</h3>
-            <div class="live-results" id="liveResults"><div class="log-entry log-info">System ready. Select clients and click Start.</div></div>
+            <div class="live-results" id="liveResults"><div class="log-entry log-info">System ready. Click "Sync All from Manager.io" first to import customers.</div></div>
         </div>
         
         <!-- Reports -->
         <div id="reports" class="tab-pane">
-            <h2>📈 Reports</h2>
+            <h2>📈 Performance Reports</h2>
             <div class="chart-container"><canvas id="performanceChart"></canvas></div>
             <div id="reportsContent"></div>
         </div>
@@ -144,6 +152,22 @@ let successAttempts = 1;
 let charts = {};
 
 // ============================================
+// PLACEMENT IDs (Fixed - same for all clients)
+// ============================================
+const PLACEMENT_IDS = [
+    "00082353-9fca-4ab4-91ae-20505479cbda",
+    "94d5307e-4332-4545-ab1e-1528c9032b7d",
+    "da996523-e77e-493c-b134-31c6c6ccae4a",
+    "2dac5598-128d-4954-b2e4-21515047b3a7",
+    "b8660bf5-d93b-4572-8edf-19bec47fb915",
+    "dd7d5b17-c4be-4369-b0f5-79361525f3c2",
+    "a26bbea1-57aa-4fd9-b7c9-e26b83114385",
+    "15e955cc-ec9b-4396-990e-b732fb74c57c",
+    "3be38758-7bf2-46f1-84a5-34e8748cade0",
+    "245e5943-0092-409d-96ae-e2ee10eac75b"
+];
+
+// ============================================
 // postMessage wrapper (for Manager.io API)
 // ============================================
 let MANAGER_ORIGIN = null;
@@ -172,6 +196,31 @@ function postMessageWithResponse(message) {
 }
 
 // ============================================
+// Fetch last invoice for customer (get subscription dates)
+// ============================================
+async function fetchLastInvoiceForCustomer(customerId) {
+    try {
+        const data = await postMessageWithResponse({
+            type: 'api-request',
+            method: 'GET',
+            path: `/api4/sales-invoice-batch?CustomerId=${customerId}&PageSize=1`
+        });
+        
+        const invoices = data.items || [];
+        if (invoices.length > 0) {
+            const invoice = invoices[0].item;
+            return {
+                subscriptionDate: invoice.customFields2?.strings?.["8c30f931-72cf-4f10-a952-778f4112158a"] || '',
+                expiryDate: invoice.customFields2?.strings?.["877c8553-9242-49b9-81e4-c91d969a53b9"] || ''
+            };
+        }
+    } catch (error) {
+        console.error('Error fetching invoice:', error);
+    }
+    return { subscriptionDate: '', expiryDate: '' };
+}
+
+// ============================================
 // Fetch and sync all customers from Manager.io to Firebase
 // ============================================
 async function fetchAndSyncAllCustomers() {
@@ -192,43 +241,62 @@ async function fetchAndSyncAllCustomers() {
         
         for (const c of customers) {
             const cust = c.item;
+            
+            // Get subscription dates from last invoice
+            const invoiceData = await fetchLastInvoiceForCustomer(cust.id);
+            
+            // Prepare client data with custom field IDs
             const clientData = {
+                // Basic info
                 name: cust.name || 'Unknown',
                 clientCode: cust.code || '',
+                
+                // Custom fields from Customer screen
                 phone: cust.customFields2?.strings?.["362a4895-b5aa-4525-82b4-f9b8e720c8ba"] || '',
                 endpoint: cust.customFields2?.strings?.["bf1e38b7-6918-4d72-ac9a-8ded57579e60"] || '',
-                subscriptionDate: new Date().toISOString().split('T')[0],
-                expiryDate: calculateExpiryDate(),
-                amountPaid: '0',
+                apiKey: cust.customFields2?.strings?.["0ad25800-6570-4443-92dd-aa1361ec81da"] || '',
+                responsible: cust.customFields2?.strings?.["fb3f3369-5b1f-4948-a787-0939c03316f4"] || '',
+                
+                // Custom fields from Invoice
+                subscriptionDate: invoiceData.subscriptionDate,
+                expiryDate: invoiceData.expiryDate,
+                
+                // Additional fields
                 systemType: 'Cloud',
                 status: cust.inactive ? 'inactive' : 'active',
+                amountPaid: '0',
                 lastSync: firebase.firestore.FieldValue.serverTimestamp()
             };
             
-            // Check if exists
+            // Check if client already exists in Firebase
             const existing = await db.collection('clients').where('clientCode', '==', clientData.clientCode).get();
             
             if (existing.empty) {
                 await db.collection('clients').add(clientData);
                 added++;
+                addLiveResult('System', true, `➕ Added: ${clientData.name} (${clientData.clientCode})`, 'success');
             } else {
                 await existing.docs[0].ref.update(clientData);
                 updated++;
+                addLiveResult('System', true, `🔄 Updated: ${clientData.name} (${clientData.clientCode})`, 'info');
             }
         }
         
         addLiveResult('System', true, `✅ Sync complete: ${added} added, ${updated} updated`, 'success');
+        
+        // Refresh UI
         await loadData();
+        updateClientsTable();
+        updateClientChecklist();
+        updateStats();
+        
+        if (clients.length > 0) {
+            addLiveResult('System', true, `📋 Now showing ${clients.length} clients in the system`, 'success');
+        }
         
     } catch (error) {
         addLiveResult('System', false, `❌ Sync failed: ${error.message}`, 'error');
     }
-}
-
-function calculateExpiryDate() {
-    const d = new Date();
-    d.setFullYear(d.getFullYear() + 1);
-    return d.toISOString().split('T')[0];
 }
 
 // ============================================
@@ -244,7 +312,7 @@ async function loadData() {
         requests = [];
         requestsSnap.forEach(doc => requests.push({ id: doc.id, ...doc.data() }));
         
-        updateUI();
+        updateStats();
         updateCharts();
         
     } catch (error) {
@@ -253,36 +321,37 @@ async function loadData() {
 }
 
 // ============================================
-// Send request to Manager.io
+// Send request to Manager.io using client's own endpoint and API key
 // ============================================
-const PLACEMENT_IDS = [
-    "00082353-9fca-4ab4-91ae-20505479cbda",
-    "94d5307e-4332-4545-ab1e-1528c9032b7d",
-    "da996523-e77e-493c-b134-31c6c6ccae4a"
-    // ... add all your placement IDs here
-];
-
 async function sendRequestToManager(client) {
     if (!client.endpoint) {
-        return { success: false, error: 'No endpoint configured' };
+        return { success: false, error: 'No endpoint configured for this client' };
+    }
+    
+    if (!client.apiKey) {
+        return { success: false, error: 'No API key configured for this client' };
     }
     
     try {
         const response = await fetch(client.endpoint, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': client.apiKey
+            },
             body: JSON.stringify({
                 Name: 'EXP2025',
                 Placement: PLACEMENT_IDS,
-                Description: '<div>Test submission</div>',
+                Description: '<div>Automated placement request from Manager.io Firebase system</div>',
                 Inactive: false
             })
         });
         
         if (response.ok) {
-            return { success: true, data: await response.text() };
+            const result = await response.text();
+            return { success: true, data: result };
         }
-        return { success: false, error: `HTTP ${response.status}` };
+        return { success: false, error: `HTTP ${response.status}: ${response.statusText}` };
         
     } catch (error) {
         return { success: false, error: error.message };
@@ -294,14 +363,23 @@ async function sendRequestToManager(client) {
 // ============================================
 async function startSendingForClient(clientId) {
     const client = clients.find(c => c.id === clientId);
-    if (!client || !client.endpoint) return;
+    if (!client) {
+        addLiveResult('System', false, `Client not found`, 'error');
+        return;
+    }
+    
+    if (!client.endpoint || !client.apiKey) {
+        addLiveResult(client.name, false, `❌ Missing endpoint or API key - cannot send`, 'error');
+        return;
+    }
     
     if (activeSending.has(clientId)) stopSendingForClient(clientId);
     
     const sending = {
         active: true,
         intervalId: null,
-        consecutiveSuccess: 0
+        consecutiveSuccess: 0,
+        clientName: client.name
     };
     
     sending.intervalId = setInterval(async () => {
@@ -316,7 +394,9 @@ async function startSendingForClient(clientId) {
             await db.collection('requests').add({
                 clientId: client.id,
                 clientName: client.name,
+                clientCode: client.clientCode,
                 status: 'success',
+                response: result.data?.substring(0, 500) || 'OK',
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
             
@@ -331,18 +411,21 @@ async function startSendingForClient(clientId) {
             await db.collection('requests').add({
                 clientId: client.id,
                 clientName: client.name,
+                clientCode: client.clientCode,
                 status: 'error',
                 error: result.error,
                 timestamp: firebase.firestore.FieldValue.serverTimestamp()
             });
         }
         
-        updateUI();
+        updateStats();
         updateCharts();
     }, sendingInterval);
     
     activeSending.set(clientId, sending);
     addLiveResult(client.name, true, '▶️ Started sending', 'info');
+    updateClientChecklist();
+    updateClientsTable();
 }
 
 function stopSendingForClient(clientId) {
@@ -351,12 +434,17 @@ function stopSendingForClient(clientId) {
         sending.active = false;
         clearInterval(sending.intervalId);
         activeSending.delete(clientId);
-        const client = clients.find(c => c.id === clientId);
-        if (client) addLiveResult(client.name, false, '⏹️ Stopped', 'warning');
+        addLiveResult(sending.clientName, false, '⏹️ Stopped', 'warning');
     }
+    updateClientChecklist();
+    updateClientsTable();
 }
 
 function startAllSending() {
+    if (clients.length === 0) {
+        addLiveResult('System', false, 'No clients found. Click "Sync All from Manager.io" first.', 'error');
+        return;
+    }
     clients.forEach(c => startSendingForClient(c.id));
 }
 
@@ -367,50 +455,57 @@ function stopAllSending() {
 // ============================================
 // UI Updates
 // ============================================
-function updateUI() {
-    updateStats();
-    updateClientsTable();
-    updateClientChecklist();
-    updatePriorityClients();
-}
-
 function updateStats() {
     const successCount = requests.filter(r => r.status === 'success').length;
     const failCount = requests.filter(r => r.status === 'error').length;
+    const activeCount = activeSending.size;
     
-    document.getElementById('statsGrid').innerHTML = `
-        <div class="stat-card"><div class="stat-number">${clients.length}</div><div>Total Clients</div></div>
-        <div class="stat-card"><div class="stat-number">${successCount}</div><div>Successful</div></div>
-        <div class="stat-card"><div class="stat-number">${failCount}</div><div>Failed</div></div>
-        <div class="stat-card"><div class="stat-number">${activeSending.size}</div><div>Active Sending</div></div>
-    `;
+    const statsGrid = document.getElementById('statsGrid');
+    if (statsGrid) {
+        statsGrid.innerHTML = `
+            <div class="stat-card"><div class="stat-number">${clients.length}</div><div>Total Clients</div></div>
+            <div class="stat-card"><div class="stat-number">${successCount}</div><div>Successful Sends</div></div>
+            <div class="stat-card"><div class="stat-number">${failCount}</div><div>Failed Sends</div></div>
+            <div class="stat-card"><div class="stat-number">${activeCount}</div><div>Active Sending</div></div>
+        `;
+    }
 }
 
 function updateClientsTable() {
     const search = document.getElementById('searchInput')?.value.toLowerCase() || '';
     const statusFilter = document.getElementById('statusFilter')?.value || 'all';
     
-    let filtered = clients.filter(c => 
-        (c.name?.toLowerCase().includes(search) || c.clientCode?.toLowerCase().includes(search)) &&
-        (statusFilter === 'all' || (statusFilter === 'active' ? isActive(c) : !isActive(c)))
-    );
+    let filtered = clients.filter(c => {
+        const matchesSearch = (c.name?.toLowerCase().includes(search) || c.clientCode?.toLowerCase().includes(search));
+        const isActiveStatus = isActive(c);
+        const matchesStatus = statusFilter === 'all' || (statusFilter === 'active' ? isActiveStatus : !isActiveStatus);
+        return matchesSearch && matchesStatus;
+    });
     
     const tbody = document.getElementById('clientsTableBody');
     if (!tbody) return;
     
+    if (filtered.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" style="text-align:center">No clients found. Click "Sync All from Manager.io" to import.</td></tr>';
+        return;
+    }
+    
     tbody.innerHTML = filtered.map(c => {
         const isActiveStatus = isActive(c);
+        const isSending = activeSending.has(c.id);
         return `
             <tr>
                 <td><input type="checkbox" class="client-checkbox" value="${c.id}"></td>
-                <td>${c.name || '—'}</td>
-                <td>${c.clientCode || '—'}</td>
-                <td>${c.phone || '—'}</td>
+                <td><strong>${escapeHtml(c.name) || '—'}</strong><br><small style="color:#64748b">${escapeHtml(c.responsible) || ''}</small></td>
+                <td>${escapeHtml(c.clientCode) || '—'}</td>
+                <td>${escapeHtml(c.phone) || '—'}</td>
                 <td>${c.expiryDate || '—'}</td>
                 <td><span class="status-badge ${isActiveStatus ? 'status-active' : 'status-expired'}">${isActiveStatus ? 'Active' : 'Expired'}</span></td>
                 <td>
-                    <button class="btn btn-success" onclick="startSendingForClient('${c.id}')">▶️ Send</button>
-                    <button class="btn btn-danger" onclick="stopSendingForClient('${c.id}')">⏹️ Stop</button>
+                    ${isSending ? 
+                        `<button class="btn btn-danger btn-sm" onclick="stopSendingForClient('${c.id}')">⏹️ Stop</button>` :
+                        `<button class="btn btn-success btn-sm" onclick="startSendingForClient('${c.id}')">▶️ Send</button>`
+                    }
                 </td>
             </tr>
         `;
@@ -421,10 +516,18 @@ function updateClientChecklist() {
     const container = document.getElementById('clientChecklist');
     if (!container) return;
     
+    if (clients.length === 0) {
+        container.innerHTML = '<div class="client-item">No clients found. Click "Sync All from Manager.io" first.</div>';
+        return;
+    }
+    
     container.innerHTML = clients.map(c => `
         <div class="client-item">
             <input type="checkbox" id="check_${c.id}" value="${c.id}" ${activeSending.has(c.id) ? 'checked' : ''}>
-            <label for="check_${c.id}"><strong>${c.name || '—'}</strong> (${c.clientCode || '—'})</label>
+            <label for="check_${c.id}">
+                <strong>${escapeHtml(c.name) || '—'}</strong> (${escapeHtml(c.clientCode) || '—'})
+                ${c.endpoint ? '✅' : '❌ No endpoint'}
+            </label>
         </div>
     `).join('');
 }
@@ -439,9 +542,17 @@ function updatePriorityClients() {
         return daysLeft <= 7 && daysLeft >= 0;
     }).slice(0,5);
     
-    container.innerHTML = expiringSoon.length ? expiringSoon.map(c => `
-        <div class="client-item"><strong>${c.name}</strong> - Expires: ${c.expiryDate}</div>
-    `).join('') : '<div>No clients expiring soon</div>';
+    if (expiringSoon.length === 0) {
+        container.innerHTML = '<div class="client-item">No clients expiring soon</div>';
+        return;
+    }
+    
+    container.innerHTML = expiringSoon.map(c => `
+        <div class="client-item">
+            <strong>${escapeHtml(c.name)}</strong> - Expires: ${c.expiryDate}
+            <button class="btn btn-primary btn-sm" onclick="startSendingForClient('${c.id}')">Send</button>
+        </div>
+    `).join('');
 }
 
 function isActive(client) {
@@ -450,9 +561,20 @@ function isActive(client) {
 }
 
 function filterClients() { updateClientsTable(); }
+
 function toggleSelectAll() {
     const isChecked = document.getElementById('selectAll')?.checked;
     document.querySelectorAll('.client-checkbox').forEach(cb => cb.checked = isChecked);
+}
+
+function escapeHtml(str) {
+    if (!str) return '';
+    return str.replace(/[&<>]/g, function(m) {
+        if (m === '&') return '&amp;';
+        if (m === '<') return '&lt;';
+        if (m === '>') return '&gt;';
+        return m;
+    });
 }
 
 function addLiveResult(client, success, message, type = null) {
@@ -463,10 +585,10 @@ function addLiveResult(client, success, message, type = null) {
     const time = new Date().toLocaleTimeString();
     const entry = document.createElement('div');
     entry.className = `log-entry ${logClass}`;
-    entry.innerHTML = `<strong>[${time}] ${client}:</strong> ${message}`;
+    entry.innerHTML = `<strong>[${time}] ${escapeHtml(client)}:</strong> ${escapeHtml(message)}`;
     container.appendChild(entry);
     entry.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
-    if (container.children.length > 100) container.removeChild(container.firstChild);
+    if (container.children.length > 200) container.removeChild(container.firstChild);
 }
 
 function updateSettings() {
@@ -504,8 +626,8 @@ function updateCharts() {
             data: {
                 labels: Object.keys(last7Days),
                 datasets: [
-                    { label: 'Successful', data: Object.values(last7Days).map(d => d.success), borderColor: '#16a34a', fill: false },
-                    { label: 'Failed', data: Object.values(last7Days).map(d => d.error), borderColor: '#dc2626', fill: false }
+                    { label: 'Successful', data: Object.values(last7Days).map(d => d.success), borderColor: '#16a34a', fill: false, tension: 0.3 },
+                    { label: 'Failed', data: Object.values(last7Days).map(d => d.error), borderColor: '#dc2626', fill: false, tension: 0.3 }
                 ]
             },
             options: { responsive: true, maintainAspectRatio: true }
@@ -519,7 +641,8 @@ function updateCharts() {
         const failed = requests.filter(r => r.status === 'error').length;
         charts.performance = new Chart(ctx2, {
             type: 'doughnut',
-            data: { labels: ['Successful', 'Failed'], datasets: [{ data: [success, failed], backgroundColor: ['#16a34a', '#dc2626'] }] }
+            data: { labels: ['Successful', 'Failed'], datasets: [{ data: [success, failed], backgroundColor: ['#16a34a', '#dc2626'] }] },
+            options: { responsive: true, maintainAspectRatio: true }
         });
     }
 }
@@ -531,19 +654,24 @@ function showTab(tabName) {
     document.querySelectorAll('.tab-pane').forEach(t => t.classList.remove('active'));
     document.querySelectorAll('.nav-tab').forEach(t => t.classList.remove('active'));
     document.getElementById(tabName).classList.add('active');
-    event?.target?.classList?.add('active');
+    if (event?.target) event.target.classList.add('active');
     if (tabName === 'reports') setTimeout(updateCharts, 100);
+    if (tabName === 'send') updateClientChecklist();
+    if (tabName === 'clients') updateClientsTable();
 }
 
 // ============================================
 // Initialize
 // ============================================
 async function init() {
-    await loadData();
-    updateUI();
-    updateCharts();
-    setInterval(() => { loadData(); }, 30000);
     addLiveResult('System', true, '🚀 System ready! Click "Sync All from Manager.io" to import customers.', 'info');
+    await loadData();
+    updateClientsTable();
+    updateClientChecklist();
+    updatePriorityClients();
+    updateStats();
+    updateCharts();
+    setInterval(() => { loadData(); updateClientChecklist(); updateClientsTable(); updatePriorityClients(); }, 30000);
 }
 
 init();
