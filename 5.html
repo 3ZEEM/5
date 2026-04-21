@@ -151,20 +151,44 @@ firebase.initializeApp(firebaseConfig);
 const db = firebase.firestore();
 
 // ============================================
-// 🔥 API KEY النهائي الذي يعمل
 // ============================================
-const API_KEY = "CgswMDAtWkVFTSgyKRISCY+wnQErM9BzEYBI390LZHi2GhIJj7CdAfs0SHkRlrANA43ELgo=";
+// 🔥 API KEY الجديد الذي يعمل
+// ============================================
+const API_KEY = "CgswMDAtWkVFTSgyKRISCZiwnQGhtAd9Eam1637BvcG8GhIJmLCdAXS2NHwRmkQSMfo71Jk=";
 
 // ============================================
-// PLACEMENT IDs
+// دالة الإرسال النهائية
 // ============================================
-const PLACEMENT_IDS = [
-    "00082353-9fca-4ab4-91ae-20505479cbda",
-    "94d5307e-4332-4545-ab1e-1528c9032b7d",
-    "da996523-e77e-493c-b134-31c6c6ccae4a"
-];
-
-// ============================================
+async function sendRequestToManager(client) {
+    const endpoint = "https://zatca.manager.io/api2/classic-custom-field-form";
+    
+    const payload = {
+        Name: 'EXP2025',
+        Placement: PLACEMENT_IDS,
+        Description: '<div>إرسال تلقائي من نظام الإدارة</div>',
+        Inactive: false
+    };
+    
+    try {
+        const response = await fetch(endpoint, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-API-KEY': API_KEY
+            },
+            body: JSON.stringify(payload)
+        });
+        
+        if (response.status === 201 || response.status === 200) {
+            const result = await response.json();
+            return { success: true, data: result };
+        }
+        return { success: false, error: `HTTP ${response.status}` };
+        
+    } catch (error) {
+        return { success: false, error: error.message };
+    }
+}// ============================================
 // المتغيرات العامة
 // ============================================
 let clients = [];
